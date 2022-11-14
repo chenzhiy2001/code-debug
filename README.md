@@ -50,7 +50,7 @@ QEMU 支持通过远程连接工具访问 QEMU 中的 gdbserver。 这允许以�
 
 ### TreeView
 
-TreeView是SCode已有的原生UI，可以进行数据展示，发送命令等功能。
+TreeView是VSCode已有的原生UI，可以进行数据展示，发送命令等功能，更多解释请看 [treeview.md](./docs/treeview.md)。
 
 可以展示的信息：
 
@@ -60,16 +60,17 @@ TreeView是SCode已有的原生UI，可以进行数据展示，发送命令等�
 | 内存信息   | 显示指定位置和长度的内存信息，可增删                         | 触发断点、暂停、用户修改请求的内存信息时更新 |
 | 断点信息   | 显示当前设置的断点以及暂未设置的，缓存的其他内存空间下的断点（比如在内核态时某用户程序的断点） | 触发断点或暂停时更新                         |
 
-用户界面有如下功能按钮，该按钮可以在package.json和src/frontend/extension.ts中进行注册，更多解释请看 [treeview.md](./docs/treeview.md)：
+用户界面有如下功能按钮，该按钮可以在package.json和src/frontend/extension.ts中进行注册：
 
 
-| 名称                           | 功能                                                     |      |
-| ------------------------------ | -------------------------------------------------------- | ---- |
-| gotokernel                     | 在用户态设置内核态出入口断点，从用户态重新进入内核态     |      |
-| setKernelInOutBreakpoints      | 设置内核态到用户态，用户态到内核态的边界处的断点         |      |
-| removeAllCliBreakpoints        | 重置按钮。清空编辑器，Debug Adapter, GDB中所有断点信息   |      |
-| disableCurrentSpaceBreakpoints | 令GDB清除当前设置的断点且不更改Debug Adapter中的断点信息 |      |
-| updateAllSpacesBreakpointsInfo | 手动更新断点信息表格                                     |      |
+| 名称                           | 功能                                                     |
+| ------------------------------ | -------------------------------------------------------- |
+| gotokernel                     | 在用户态设置内核态出入口断点，从用户态重新进入内核态     |
+| setKernelInBreakpoints         | 设置用户态到内核态的边界处的断点                         |
+| setKernelOutBreakpoints        | 设置内核态到用户态的边界处断点                           |
+| removeAllCliBreakpoints        | 重置按钮。清空编辑器，Debug Adapter, GDB中所有断点信息   |
+| disableCurrentSpaceBreakpoints | 令GDB清除当前设置的断点且不更改Debug Adapter中的断点信息 |
+| updateAllSpacesBreakpointsInfo | 手动更新断点信息表格                                     |
 
 
 
@@ -125,7 +126,7 @@ Qemu虚拟机运行rCore-Tutorial操作系统，本项目中Qemu开启了gdbstub
 
 ### 常用API、GDB命令
 
-#### TreeView <==> 插件进程
+#### TreeView命令注册
 
 命令注册以后，用户可以直接点击界面上的按钮向插件进程发送消息
 
@@ -133,8 +134,8 @@ Qemu虚拟机运行rCore-Tutorial操作系统，本项目中Qemu开启了gdbstub
 const setKernelInOutBreakpointsCmd = vscode.commands.registerCommand(
     "code-debug.setKernelInOutBreakpoints",
     () => {
-        vscode.debug.activeDebugSession?.customRequest("setKernelInOutBreakpoints");
-        vscode.window.showInformationMessage("Kernel In Out Breakpoints Set");
+        vscode.debug.activeDebugSession?.customRequest("setKernelInBreakpoints");
+        vscode.window.showInformationMessage("Kernel In Breakpoints Set");
     }
 );
 ```
@@ -186,10 +187,6 @@ vscode.window.showInformationMessage("message"):
    					else if (message.event === "eventTest") {
    						//Do Something
    					}
-   					else if (message.event === "updateRegistersValuesEvent") {
-   						//向WebView传递消息
-   						currentPanel.webview.postMessage({ regValues: message.body });
-                           //...
    ```
 
 详见`src/frontend/extension.ts`、`src/mibase.ts`
@@ -214,12 +211,10 @@ vscode.window.showInformationMessage("message"):
 
 详见src/mibase.ts
 
-
-
 #### GDB命令
 
 - `add-symbol-file`
-- `break-insert -f`
+- `break`
 
 详细的输出及返回数据的格式可参考[官方文档](https://sourceware.org/gdb/onlinedocs/gdb/GDB_002fMI.html#GDB_002fMI)
 
@@ -237,11 +232,11 @@ VSCode 其实提供了几个重要的原生 request 接口，如 variablesReques
 1. 当增删断点或`stopped`事件发生时，向Debug Adapter请求当前所有的断点信息（以及哪些断点被设置，哪些被缓存）
 
 ```ts
-    //extension,ts
+    //extension.ts
     onDidSendMessage: (message) => {
         if (message.command === "setBreakpoints"){//如果Debug Adapter设置了一个断点
             
-            vscode.debug.activeDebugSession?.customRequest("listBreakpoints");
+            vscode.debug.activeDebugSession?.customRequest("update");
         }
         if (message.type === "event") {
             //...
@@ -249,7 +244,7 @@ VSCode 其实提供了几个重要的原生 request 接口，如 variablesReques
             if (message.event === "stopped") {
                 //更新寄存器信息
 				//更新断点信息
-                vscode.debug.activeDebugSession?.customRequest("listBreakpoints");   
+                vscode.debug.activeDebugSession?.customRequest("update");   
             }
     //...
 ```
@@ -258,43 +253,43 @@ VSCode 其实提供了几个重要的原生 request 接口，如 variablesReques
 
 ```ts
 //src/mibase.ts-MI2DebugSession-setBreakPointsRequest
-	//设置某一个文件的断点
-	protected setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments): void {
-		this.miDebugger.clearBreakPoints(args.source.path).then(() => { //清空该文件的断点
-            const path = args.source.path;
-            let spaceName ="";
-            //保存断点信息，如果这个断点不是当前空间的（比如还在内核态时就设置用户态的断点，暂时不通知GDB设置断点
-           //如果当前断点是内核入口断点，就把他的spaceName设置为“0”，进行单独处理
-            if (path==="src/trap/mod.rs" && args.breakpoints[0].line===65)
-            {
-                spaceName = "0";
-            }
-            else
-            {
-                spaceName = this.addressSpaces.pathToSpaceName(path);
-            }
-            //如果这个断点是当前地址空间或者这个断点是内核入口断点，就通知GDB设置断点
-            if (spaceName === this.addressSpaces.getCurrentSpaceName() 
-            || spaceName==="0") {
-                // TODO rules can be set by user
-                this.addressSpaces.saveBreakpointsToSpace(args, spaceName);
-
-            } else {
-                this.sendEvent({
-                    event: "showInformationMessage",
-                    body: "Breakpoints Not in Current Address Space. Saved",
-                } as DebugProtocol.Event);
-                this.addressSpaces.saveBreakpointsToSpace(args, spaceName);
-                return;
-            }
-			
-			const all = args.breakpoints.map(brk => {
+    protected setBreakPointsRequest(
+		response: DebugProtocol.SetBreakpointsResponse,
+		args: DebugProtocol.SetBreakpointsArguments
+	): void {
+		this.miDebugger.clearBreakPoints(args.source.path).then(
+			() => {
+				//清空该文件的断点
+				const path = args.source.path;
+				const spaceName = this.addressSpaces.pathToSpaceName(path);
+				//保存断点信息，如果这个断点不是当前空间的（比如还在内核态时就设置用户态的断点），暂时不通知GDB设置断点
+				//如果这个断点是当前地址空间，或者是内核入口断点，那么就通知GDB立即设置断点
+				if ((spaceName === this.addressSpaces.getCurrentSpaceName()) || (path==="src/trap/mod.rs" && args.breakpoints[0].line===30)
+				) {
+					// TODO rules can be set by user
+					this.addressSpaces.saveBreakpointsToSpace(args, spaceName);
+					
+				} 
+				else {
+					this.sendEvent({
+						event: "showInformationMessage",
+						body: "Breakpoints Not in Current Address Space. Saved",
+					} as DebugProtocol.Event);
+					this.addressSpaces.saveBreakpointsToSpace(args, spaceName);
+					return;
+				}
                 //令GDB设置断点
-				return this.miDebugger.addBreakPoint({ file: path, line: brk.line, condition: brk.condition, countCondition: brk.hitCondition });
-			});
+				const all = args.breakpoints.map((brk) => {
+					return this.miDebugger.addBreakPoint({
+						file: path,
+						line: brk.line,
+						condition: brk.condition,
+						countCondition: brk.hitCondition,
+					});
+				});
 			//...
         //更新断点信息
-		this.customRequest("listBreakpoints",{} as DebugAdapter.Response,{});
+		this.customRequest("update",{} as DebugAdapter.Response,{});
 	}
 ```
 
@@ -306,7 +301,7 @@ VSCode 其实提供了几个重要的原生 request 接口，如 variablesReques
 
 触发断点时，检测这个断点是否是内核边界的断点。
 
-```
+```typescript
     //src/mibase.ts 
     protected handleBreakpoint(info: MINode) {
         //...
@@ -323,8 +318,9 @@ VSCode 其实提供了几个重要的原生 request 接口，如 variablesReques
 
 若是，添加符号表文件，移除当前所有断点，加载用户态程序的断点。
 
-```    //src/frontend/extension.ts
-    else if (message.event === "kernelToUserBorder") {
+```    ts
+//extension.ts    
+else if (message.event === "kernelToUserBorder") {
     //到达内核态->用户态的边界
     // removeAllCliBreakpoints();
     vscode.window.showInformationMessage("will switched to " + userDebugFile + " breakpoints");
@@ -343,57 +339,72 @@ VSCode 其实提供了几个重要的原生 request 接口，如 variablesReques
 
 #### 进入用户态以后，想要再次进入内核
 
-点击gotokernel按钮，更新符号表，判断当前要设置的断点是不是内核入口断点，如果是直接通知GDB添加断点。
+点击gotokernel按钮，判断当前要设置的断点是不是内核入口断点，如果是直接通知GDB添加断点。
 
-```    //src/frontend/misbase.ts
+```    ts
+//src/mibase.ts 	
     case "goToKernel":
-        this.addressSpaces.disableCurrentSpaceBreakpoints();
-        this.miDebugger.sendCliCommand("add-symbol-file " + os.homedir() +
-        "/rCore-Tutorial-v3/os/target/riscv64gc-unknown-none-elf/release/os");
-        this.setBreakPointsRequest(
-            response as DebugProtocol.SetBreakpointsResponse,
-            {
-                source: { path: "src/trap/mod.rs" } as DebugProtocol.Source,
-                breakpoints: [{ line: 65 },{ line: 135 }] as DebugProtocol.SourceBreakpoint[],
-            } as DebugProtocol.SetBreakpointsArguments
-        );
+			this.setBreakPointsRequest(
+				response as DebugProtocol.SetBreakpointsResponse,
+				{
+					source: { path: "src/trap/mod.rs" } as DebugProtocol.Source,
+					breakpoints: [{ line: 30 }] as DebugProtocol.SourceBreakpoint[],
+				} as DebugProtocol.SetBreakpointsArguments
+			);
+			this.sendEvent({ event: "trap_handle" } as DebugProtocol.Event);				
+			break;
 
-        this.sendEvent({ event: "trap_handle" } as DebugProtocol.Event);                
-        break;
-
-    //清空该文件的断点
-    const path = args.source.path;
-    let spaceName ="";
-    //保存断点信息，如果这个断点不是当前空间的（比如还在内核态时就设置用户态的断点），
-    //暂时不通知GDB设置断点
-    if (path==="src/trap/mod.rs" && args.breakpoints[0].line===65)
-    {
-        spaceName = "0";
-    }
-    else
-    {
-        spaceName = this.addressSpaces.pathToSpaceName(path);
-    }
-
-    if (spaceName === this.addressSpaces.getCurrentSpaceName() 
-    || spaceName==="0") {
-        // TODO rules can be set by user
-        this.addressSpaces.saveBreakpointsToSpace(args, spaceName);
-    } else {...}
-    
+//src/mibase.ts
+	protected setBreakPointsRequest(
+		response: DebugProtocol.SetBreakpointsResponse,
+		args: DebugProtocol.SetBreakpointsArguments
+	): void {
+		this.miDebugger.clearBreakPoints(args.source.path).then(
+			() => {
+				//清空该文件的断点
+				const path = args.source.path;
+				const spaceName = this.addressSpaces.pathToSpaceName(path);
+				//保存断点信息，如果这个断点不是当前空间的（比如还在内核态时就设置用户态的断点），暂时不通知GDB设置断点
+				//如果这个断点是当前地址空间，或者是内核入口断点，那么就通知GDB立即设置断点
+				if ((spaceName === this.addressSpaces.getCurrentSpaceName()) || (path==="src/trap/mod.rs" && args.breakpoints[0].line===30)
+				) {
+					// TODO rules can be set by user
+					this.addressSpaces.saveBreakpointsToSpace(args, spaceName);					
+				} 
+				else {
+					this.sendEvent({
+						event: "showInformationMessage",
+						body: "Breakpoints Not in Current Address Space. Saved",
+					} as DebugProtocol.Event);
+					this.addressSpaces.saveBreakpointsToSpace(args, spaceName);
+					return;
+				}
+				//令GDB设置断点
+				const all = args.breakpoints.map((brk) => {
+					return this.miDebugger.addBreakPoint({
+						file: path,
+						line: brk.line,
+						condition: brk.condition,
+						countCondition: brk.hitCondition,
+					});
+				});        
 ```
 
-更新当前地址空间
+更新当前地址空间，更新符号表，
 
-```    //src/frontend/extension.ts
-    else if (message.event === "trap_handle") {
-
-        vscode.debug.activeDebugSession?.customRequest(
-            "updateCurrentSpace",
-            "src/trap/mod.rs"
-        );
-    vscode.window.showInformationMessage("go to kernel trap_handle");
-    }
+```    ts
+//extension.ts
+	else if (message.event === "trap_handle") {							
+					//vscode.window.showInformationMessage("switched to trap_handle");
+					vscode.debug.activeDebugSession?.customRequest("addDebugFile", {
+						debugFilepath:
+							os.homedir() +
+							"/rCore-Tutorial-v3/os/target/riscv64gc-unknown-none-elf/release/os",
+					});
+					vscode.debug.activeDebugSession?.customRequest(
+						"updateCurrentSpace",
+						"src/trap/mod.rs"
+					);
 ```
 
 ### 符号信息的获取
@@ -409,9 +420,7 @@ VSCode 其实提供了几个重要的原生 request 接口，如 variablesReques
 rCore-Tutorial为了提升性能，在用户程序链接脚本`linker.ld`里面discard了`.debug_info`等段，修改链接脚本可以让链接器不忽略这些调试信息段。但这导致easy-fs的崩溃和栈溢出，故还需将easy-fs-fuse打包程序的磁盘大小，和栈空间改大。此外，user/目录要先 make clean 再编译，修改过的linkerscript才会生效。
 
 ### 界面美化
-
-运用bootstrap等前端技术，提供对用户更加友好的图形界面：
-![coredebugger-screenshot-bootstrap-mid](./docs/imgs/coredebugger-screenshot-bootstrap-mid.png)
+![coredebugger-screenshot-bootstrap-mid](./docs/imgs/code-debug UI.png)
 
 ## 总结与展望
 
@@ -454,21 +463,17 @@ vmware虚拟磁盘：(vmware需16.2.3及以上版本)
 ```
 
 用户名oslab，密码是一个空格
-注意修改下git的用户名和邮箱
+注意修改下git的用户名和邮箱，并及时更新项目
 
 ### 安装-方法2
 
 流程略长，如果出现问题欢迎提issue
 
-1. Ubuntu 20.04，推荐用ubuntu20.04虚拟机。其它版本请确保使用较新的`npm`和`node`。
+1. 推荐用ubuntu20.04虚拟机。其它版本请确保使用较新的`npm`和`node`。
 
-2. 安装vscode
+1. 安装 vscode（Ubuntu中下载的vscode不能输入中文，可以参考[这篇文章](https://blog.csdn.net/mantou_riji/article/details/123379045?utm_medium=distribute.pc_aggpage_search_result.none-task-blog-2~aggregatepage~first_rank_ecpm_v1~rank_v31_ecpm-1-123379045-null-null.pc_agg_new_rank&utm_term=vscode%E8%BE%93%E5%85%A5%E4%B8%8D%E4%BA%86%E4%B8%AD%E6%96%87&spm=1000.2123.3001.4430)）
 
-   ```
-   snap install --classic code
-   ```
-
-3. Rust 开发环境配置，qemu安装，可以参考[rCore指导书](https://rcore-os.github.io/rCore-Tutorial-Book-v3/chapter0/5setup-devel-env.html)，也可以使用下面命令直接安装
+1. Rust 开发环境配置，qemu安装，可以参考[rCore指导书](https://rcore-os.github.io/rCore-Tutorial-Book-v3/chapter0/5setup-devel-env.html)，也可以使用下面命令直接安装
 
    ```
    Rust 开发环境配置主要步骤如下：
@@ -504,98 +509,96 @@ vmware虚拟磁盘：(vmware需16.2.3及以上版本)
    qemu-riscv64 --version
    ```
 
-4. npm安装，尽量安装较新的版本：
+1. npm安装，尽量安装较新的版本
 
    ```
    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
    sudo apt-get install -y nodejs
    #查看版本信息
    node --version
-   npm --version  
+   npm --version
    ```
 
-5. 获取risc-v工具链 在[sifive官网](https://www.sifive.com/software)下载risc-v工具链（往下拉找到GNU Embedded Toolchain — v2020.12.8, 下载ubuntu版本）， 或者试试直接访问[这里](https://static.dev.sifive.com/dev-tools/riscv64-unknown-elf-gcc-8.3.0-2020.04.1-x86_64-linux-ubuntu14.tar.gz)。下载后将该文件复制到home目录下
+1. 获取risc-v工具链 在[sifive官网](https://www.sifive.com/software)下载risc-v工具链（往下拉找到GNU Embedded Toolchain — v2020.12.8, 下载ubuntu版本）， 或者试试直接访问[这里](https://static.dev.sifive.com/dev-tools/riscv64-unknown-elf-gcc-8.3.0-2020.04.1-x86_64-linux-ubuntu14.tar.gz)。下载后将该文件复制到home目录下
+
+1. 下载rCore-Tutorial-v3，需要修改rCore-Tutorial-v3的源码和编译参数，具体修改可见这个[diff文件](https://github.com/zhangly1234/code-debug/blob/master/docs/rCore-mod.diff)，可以下载[这个仓库](https://github.com/chenzhiy2001/rCore-Tutorial-v3)修改过的rCore-Tutorial-v3，建议下载到home目录，下载之后跑一遍rCore-Tutorial-v3。
+
+1. clone 本仓库，建议clone到home目录
+
+1. 在仓库目录下运行 npm install 命令
+
+1. 在vscode中打开本项目，按F5执行，会弹出一个新的窗口
+
+1. 在新窗口中打开rCore-Tutorial-v3项目，在 .vscode 文件中添加 launch.json文件，并输入以下内容，按F5就可以启动gdb并调试。
+
+   如果GDB并没有正常启动，可以尝试把下面的gdbpath改成绝对路径(如“/home/username/riscv64-unknown-elf-toolchain-10.2.0-2020.12.8-x86_64-linux-ubuntu14/bin”)。
 
    ```
-   # 需要配置工具链的环境变量：
-   # 编辑~/.bashrc文件，在最后一行添加下面语句：
-   export PATH=$PATH:/home/username/riscv64-unknown-elf-gcc-8.3.0-2020.04.1-x86_64-linux-ubuntu14/bin
+   //launch.json
+   {
+       "version": "0.2.0",
+       "configurations": [
+           {
+               "type": "gdb",
+               "request": "launch",
+               "name": "Attach to Qemu",
+               "executable": "${userHome}/rCore-Tutorial-v3/os/target/riscv64gc-unknown-none-elf/release/os",
+               "target": ":1234",
+               "remote": true,
+               "cwd": "${workspaceRoot}",
+               "valuesFormatting": "parseText",
+               "gdbpath": "riscv64-unknown-elf-gdb",
+               "showDevDebugOutput":true,
+               "internalConsoleOptions": "openOnSessionStart",
+               "printCalls": true,
+               "stopAtConnect": true,
+               "qemuPath": "qemu-system-riscv64",
+               "qemuArgs": [
+                   "-M",
+                   "128m",
+                   "-machine",
+                   "virt",
+                   "-bios",
+                   "${userHome}/rCore-Tutorial-v3/bootloader/rustsbi-qemu.bin",
+                   "-display",
+                   "none",
+                   "-device",
+                   "loader,file=${userHome}/rCore-Tutorial-v3/os/target/riscv64gc-unknown-none-elf/release/os.bin,addr=0x80200000",
+                   "-drive",
+                   "file=${userHome}/rCore-Tutorial-v3/user/target/riscv64gc-unknown-none-elf/release/fs.img,if=none,format=raw,id=x0",
+                   "-device",
+                   "virtio-blk-device,drive=x0",
+                   "-device",
+                   "virtio-gpu-device",
+                   "-device",
+                   "virtio-keyboard-device",
+                   "-device",
+                   "virtio-mouse-device",
+                   "-serial",
+                   "stdio",
+                   "-s",
+                   "-S"
+               ]
+           },
+       ]
+   }
    ```
 
-6. 下载rCore-Tutorial-v3，需要修改rCore-Tutorial-v3的源码和编译参数，具体修改可见[这个diff文件](./docs/rCore-mod.diff)，可以下载[这个仓库](https://github.com/chenzhiy2001/rCore-Tutorial-v3)修改过的rCore-Tutorial-v3，建议下载到home目录，下载之后跑一遍rCore-Tutorial-v3。
-
-7. clone 本仓库，建议clone到home目录
-
-8. 在仓库目录下运行 npm install 命令
-
-9. 在vscode中打开本项目，按F5执行，会弹出一个新的窗口
-
-10. 在新窗口中打开rCore-Tutorial-v3项目，在 .vscode 文件中添加 launch.json文件，并输入以下内容，按F5就可以启动gdb并调试。
-
-    如果GDB并没有正常启动，可以尝试把下面的gdbpath改成绝对路径(如“/home/username/riscv64-unknown-elf-toolchain-10.2.0-2020.12.8-x86_64-linux-ubuntu14/bin”)。
-
-    ```
-    //launch.json
-    {
-        "version": "0.2.0",
-        "configurations": [
-            {
-                "type": "gdb",
-                "request": "launch",
-                "name": "Attach to Qemu",
-                "executable": "${userHome}/rCore-Tutorial-v3/os/target/riscv64gc-unknown-none-elf/release/os",
-                "target": ":1234",
-                "remote": true,
-                "cwd": "${workspaceRoot}",
-                "valuesFormatting": "parseText",
-                "gdbpath": "riscv64-unknown-elf-gdb",
-                "showDevDebugOutput":true,
-                "internalConsoleOptions": "openOnSessionStart",
-                "printCalls": true,
-                "stopAtConnect": true,
-                "qemuPath": "qemu-system-riscv64",
-                "qemuArgs": [
-                    "-M",
-                    "128m",
-                    "-machine",
-                    "virt",
-                    "-bios",
-                    "${userHome}/rCore-Tutorial-v3/bootloader/rustsbi-qemu.bin",
-                    "-display",
-                    "none",
-                    "-device",
-                    "loader,file=${userHome}/rCore-Tutorial-v3/os/target/riscv64gc-unknown-none-elf/release/os.bin,addr=0x80200000",
-                    "-drive",
-                    "file=${userHome}/rCore-Tutorial-v3/user/target/riscv64gc-unknown-none-elf/release/fs.img,if=none,format=raw,id=x0",
-                    "-device",
-                    "virtio-blk-device,drive=x0",
-                    "-device",
-                    "virtio-gpu-device",
-                    "-device",
-                    "virtio-keyboard-device",
-                    "-device",
-                    "virtio-mouse-device",
-                    "-serial",
-                    "stdio",
-                    "-s",
-                    "-S"
-                ]
-            },
-        ]
-    }
-    ```
+   
 
 ### 使用
 
 1. 在code-debug文件夹下`git pull`更新软件仓库，确保代码是最新的，然后按F5运行插件，这时会打开一个新的VSCode窗口。 **后续操作步骤均在新窗口内完成！**
-1. 在新窗口内，按照上面的提示配置`launch.json`并保存。
+1. 在新窗口内，打开rCore-Tutorial-v3项目，按照上面的提示配置`launch.json`并保存。
 1. 按F5键，即可开始使用本插件。
 1. 清除所有断点（removeAllCliBreakpoints按钮）
-1. 设置内核入口、出口断点（setKernelInOutBreakpoints按钮）
+1. 设置内核入口（setKernelInBreakpoints按钮）、出口断点（setKernelOutBreakpoints按钮）
 1. 设置内核代码和用户程序代码的断点（推荐initproc.rs的println!语句）
 1. 按continue按钮开始运行rCore-Tutorial
 1. 当运行到位于内核出口的断点时，插件会自动切换到用户态的断点
-1. 在用户态程序中如果想观察内核内的执行流，可以点击gotokernel按钮，然后点击继续按钮，程序会停在内核的入口断点，接下来，可以在内核态设置断点，点击继续，运行到内核的出口断点之后，会回到用户态。
+1. 在用户态程序中如果想观察内核内的执行流，可以点击gotokernel按钮，然后点击继续按钮，程序会停在内核的入口断点，这时，可以先把内核出口断点设置好（点击setKernelOutBreakpoints按钮），接下来，可以在内核态设置断点，点击继续，运行到内核的出口断点之后，会回到用户态。
+
+[视频演示](./docs/imgs/20221113_pre.mp4)
 
 ### 功能
 

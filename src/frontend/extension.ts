@@ -25,11 +25,18 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.window.showInformationMessage("symbol file `initproc` removed");
 	});
 
-	const setKernelInOutBreakpointsCmd = vscode.commands.registerCommand(
-		"code-debug.setKernelInOutBreakpoints",
+	const setKernelInBreakpointsCmd = vscode.commands.registerCommand(
+		"code-debug.setKernelInBreakpoints",
 		() => {
-			vscode.debug.activeDebugSession?.customRequest("setKernelInOutBreakpoints");
-			vscode.window.showInformationMessage("Kernel In Out Breakpoints Set");
+			vscode.debug.activeDebugSession?.customRequest("setKernelInBreakpoints");
+			vscode.window.showInformationMessage("Kernel In Breakpoints Set");
+		}
+	);
+	const setKernelOutBreakpointsCmd = vscode.commands.registerCommand(
+		"code-debug.setKernelOutBreakpoints",
+		() => {
+			vscode.debug.activeDebugSession?.customRequest("setKernelOutBreakpoints");
+			vscode.window.showInformationMessage("Kernel Out Breakpoints Set");
 		}
 	);
 
@@ -60,13 +67,14 @@ export function activate(context: vscode.ExtensionContext) {
 	// const updateAllSpacesBreakpointsInfoCmd = vscode.commands.registerCommand(
 	// 	"updateAllSpacesBreakpointsInfo",
 	// 	() => {
-	// 		vscode.debug.activeDebugSession?.customRequest("listBreakpoints");
+	// 		vscode.debug.activeDebugSession?.customRequest("update");
 	// 	}
 	// );
 
 	context.subscriptions.push(
 		removeDebugFileCmd,
-		setKernelInOutBreakpointsCmd,
+		setKernelInBreakpointsCmd,
+		setKernelOutBreakpointsCmd,
 		removeAllCliBreakpointsCmd,
 		disableCurrentSpaceBreakpointsCmd,
 		//updateAllSpacesBreakpointsInfoCmd,
@@ -89,20 +97,16 @@ export function activate(context: vscode.ExtensionContext) {
 					//TODO use switch case
 					if (message.command === "setBreakpoints") {
 						//如果Debug Adapter设置了一个断点
-						vscode.debug.activeDebugSession?.customRequest("listBreakpoints");
+						//更新寄存器信息
+						//更新断点信息
+						vscode.debug.activeDebugSession?.customRequest("update");
 					}
 					if (message.type === "event") {
 						//如果（因为断点等）停下
-
+                        //更新TreeView中的信息 
 						if (message.event === "stopped") {
-							//console.log("webview should update now. sending eventTest");
-							//vscode.debug.activeDebugSession?.customRequest("eventTest");
-							//console.log("evenTest sent. Requesting registersNamesRequest and registersValuesRequest. ")
-							//请求寄存器信息
-							vscode.debug.activeDebugSession?.customRequest("registersNamesRequest");
-							vscode.debug.activeDebugSession?.customRequest("registersValuesRequest");
-							//更新WebView中的断点信息
-							vscode.debug.activeDebugSession?.customRequest("listBreakpoints");
+	
+							vscode.debug.activeDebugSession?.customRequest("update");
 						} //处理自定义事件
 						else if (message.event === "eventTest") {
 							console.log("Extension Received eventTest");
@@ -130,7 +134,7 @@ export function activate(context: vscode.ExtensionContext) {
 							);
 							console.log("/////////////////////////kernelToUserBorder///////////////////");
 						}
-                        //系统调用，从用户态进入内核的trap处理函数
+                        //从用户态进入内核的trap处理函数
 						else if (message.event === "trap_handle") {
 							
 						//vscode.window.showInformationMessage("switched to trap_handle");
@@ -166,7 +170,7 @@ export function activate(context: vscode.ExtensionContext) {
 							vscode.window.showInformationMessage(message.body);
 						} else if (message.event === "showErrorMessage") {
 							vscode.window.showErrorMessage(message.body);
-						} else if (message.event === "listBreakpoints") {
+						} else if (message.event === "update") {
 							vscode.window.showInformationMessage("断点信息表格已经更新");
 						}
 					}

@@ -44,7 +44,12 @@
 				},
 				{
 					"when": "resourceLangId == rust",
-					"command": "code-debug.setKernelInOutBreakpoints",
+					"command": "code-debug.setKernelInBreakpoints",
+					"group": "navigation"
+				},
+				{
+					"when": "resourceLangId == rust",
+					"command": "code-debug.setKernelOutBreakpoints",
 					"group": "navigation"
 				},
 				{
@@ -88,8 +93,16 @@
 				}
 			},
 			{
-				"command": "code-debug.setKernelInOutBreakpoints",
-				"title": "Set Kernel-In-Out Breakpoints",
+				"command": "code-debug.setKernelInBreakpoints",
+				"title": "Set Kernel-In Breakpoints",
+				"icon": {
+					"dark": "images/set-kernel-in-out-breakpoints-dark.svg",
+					"light": "images/set-kernel-in-out-breakpoints-light.svg"
+				}
+			},
+			{
+				"command": "code-debug.setKernelOutBreakpoints",
+				"title": "Set Kernel-Out Breakpoints",
 				"icon": {
 					"dark": "images/set-kernel-in-out-breakpoints-dark.svg",
 					"light": "images/set-kernel-in-out-breakpoints-light.svg"
