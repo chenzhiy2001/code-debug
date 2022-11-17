@@ -598,7 +598,7 @@ vmware虚拟磁盘：(vmware需16.2.3及以上版本)
 1. 当运行到位于内核出口的断点时，插件会自动切换到用户态的断点
 1. 在用户态程序中如果想观察内核内的执行流，可以点击gotokernel按钮，然后点击继续按钮，程序会停在内核的入口断点，这时，可以先把内核出口断点设置好（点击setKernelOutBreakpoints按钮），接下来，可以在内核态设置断点，点击继续，运行到内核的出口断点之后，会回到用户态。
 
-[视频演示](./docs/imgs/20221113_pre.mp4)
+[视频演示](https://www.bilibili.com/video/BV1gW4y1x7ys/?spm_id_from=333.999.0.0&vd_source=ab418999e896fd33cc8eefbeab063d7f)
 
 ### 功能
 
