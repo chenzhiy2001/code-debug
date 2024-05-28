@@ -30,7 +30,10 @@
 			"group":{
 				"kind": "build",
 				"isDefault": true
-			}
+			},
+			"options": {
+				"cwd": "${config:code-debug.sourceCodePath}"
+			},
 		},
 		{
 			"label": "npm:lint",
@@ -39,7 +42,10 @@
 			"command": "npm",
 			"group": "build",
 			"args": ["run", "lint"],
-			"problemMatcher": "$eslint-compact"
+			"problemMatcher": "$eslint-compact",
+			"options": {
+				"cwd": "${config:code-debug.sourceCodePath}"
+			},
 		},
 		{
 			"label": "npm:lint-fix",
@@ -48,7 +54,10 @@
 			"command": "npm",
 			"group": "build",
 			"args": ["run", "lint-and-fix"],
-			"problemMatcher": "$eslint-compact"
+			"problemMatcher": "$eslint-compact",
+			"options": {
+				"cwd": "${config:code-debug.sourceCodePath}"
+			},
 		},
 		// Ctrl + Shift + P (Command Palette), then select "Tasks: Run Test Task" and select "npm:test"
 		{
@@ -60,7 +69,10 @@
 				"kind": "test",
 				"isDefault": true
 			},
-			"args": ["test"]
+			"args": ["test"],
+			"options": {
+				"cwd": "${config:code-debug.sourceCodePath}"
+			},
 		},
 		{
 			"label": "npm:coverage",
@@ -68,7 +80,10 @@
 			"type": "shell",
 			"command": "npm",
 			"group": "test",
-			"args": ["run", "coverage"]
+			"args": ["run", "coverage"],
+			"options": {
+				"cwd": "${config:code-debug.sourceCodePath}"
+			},
 		},
 		{
 			"label": "npm:lint-docs",
@@ -77,7 +92,10 @@
 			"command": "npm",
 			"group": "build",
 			"args": ["run", "lint-docs"],
-			"problemMatcher": "$markdownlint"
+			"problemMatcher": "$markdownlint",
+			"options": {
+				"cwd": "${config:code-debug.sourceCodePath}"
+			},
 		},
 		{
 			"label": "npm:link-check",
@@ -85,7 +103,10 @@
 			"type": "shell",
 			"command": "npm",
 			"group": "build",
-			"args": ["run", "link-check"]
+			"args": ["run", "link-check"],
+			"options": {
+				"cwd": "${config:code-debug.sourceCodePath}"
+			},
 		},
 		{
 			"label": "npm:spellcheck-docs",
@@ -105,7 +126,10 @@
 					"message": 4
 				},
 				"severity": "info"
-			}
+			},
+			"options": {
+				"cwd": "${config:code-debug.sourceCodePath}"
+			},
 		},
 		{
 			"label": "npm:prettier-write-docs",
@@ -113,7 +137,10 @@
 			"type": "shell",
 			"command": "npm",
 			"group": "build",
-			"args": ["run", "prettier-write-docs"]
+			"args": ["run", "prettier-write-docs"],
+			"options": {
+				"cwd": "${config:code-debug.sourceCodePath}"
+			},
 		}
 	]
 }
