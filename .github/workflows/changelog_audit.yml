@@ -1,4 +1,7 @@
 name: Changelog Audit
+defaults:
+  run:
+    working-directory: code-debug
 on:
   push:
     paths:

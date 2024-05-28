@@ -1,4 +1,7 @@
 name: Release
+defaults:
+  run:
+    working-directory: code-debug
 on:
   release:
     types: [published]
