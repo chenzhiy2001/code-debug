@@ -7,11 +7,11 @@
 			"type": "extensionHost",
 			"request": "launch",
 			"runtimeExecutable": "${execPath}",
-			"args": ["--extensionDevelopmentPath=${workspaceRoot}" ],
+			"args": ["--extensionDevelopmentPath=${config:code-debug.sourceCodePath}" ],
 			"stopOnEntry": false,
 			"sourceMaps": true,
 			"outFiles": [
-				"${workspaceRoot}/out/**/*.js"
+				"${config:code-debug.sourceCodePath}/out/**/*.js"
 			],
 			"preLaunchTask": "compile"
 		},
@@ -20,14 +20,14 @@
 			"type": "node",
 			"request": "launch",
 			"runtimeArgs": [ "--nolazy" ],
-			"program": "${workspaceRoot}/src/gdb.ts",
+			"program": "${config:code-debug.sourceCodePath}/src/gdb.ts",
 			"stopOnEntry": false,
 			"args": [ "--server=4711" ],
 			"sourceMaps": true,
 			"outFiles": [
-				"${workspaceRoot}/out/**/*.js"
+				"${config:code-debug.sourceCodePath}/out/**/*.js"
 			],
-			"cwd": "${workspaceRoot}",
+			"cwd": "${config:code-debug.sourceCodePath}",
 			"preLaunchTask": "compile"
 		},
 		{
@@ -36,13 +36,13 @@
 			"request": "launch",
 			"runtimeExecutable": "${execPath}",
 			"args": [
-				"--extensionDevelopmentPath=${workspaceRoot}",
-				"--extensionTestsPath=${workspaceRoot}/out/src/test/suite/index"
+				"--extensionDevelopmentPath=${config:code-debug.sourceCodePath}",
+				"--extensionTestsPath=${config:code-debug.sourceCodePath}/out/src/test/suite/index"
 			],
 			"stopOnEntry": false,
 			"sourceMaps": true,
 			"outFiles": [
-				"${workspaceRoot}/out/**/*.js"
+				"${config:code-debug.sourceCodePath}/out/**/*.js"
 			],
 			"preLaunchTask": "compile"
 		}

@@ -1,4 +1,7 @@
-name: Lint Project Documentation
+name: Lint Project Documentation (Temporarily closed, does nothing)
+defaults:
+  run:
+    working-directory: code-debug
 on:
   push:
     paths:

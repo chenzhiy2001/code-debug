@@ -1,4 +1,7 @@
 name: Unit Test Project
+defaults:
+  run:
+    working-directory: code-debug
 on:
   push:
   pull_request:
