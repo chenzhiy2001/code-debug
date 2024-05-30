@@ -22,6 +22,6 @@
 		"${config:code-debug.sourceCodePath}/out": true,
 	},
 	"testExplorer.useNativeTesting": true, // Use VSCode Native Test Explorer
-	"typescript.tsdk": "./node_modules/typescript/lib", // we want to use the TS server from our node_modules folder to control its version
+	"typescript.tsdk": "${config:code-debug.sourceCodePath}/node_modules/typescript/lib", // we want to use the TS server from our node_modules folder to control its version
 	"code-debug.sourceCodePath":"${workspaceRoot}/code-debug"
 }
