@@ -1,4 +1,18 @@
-# 去年的工作概要：
+# Proj158-支持Rust语言的源代码级内核调试工具
+### 项目仓库
+
+| 仓库名                    | 仓库描述                                                     | Github 地址                                                 | commit数量  （去年九月至今）                                  |
+| ------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------- | ------------------------------------------------------------ |
+| code-debug                | 本仓库                                                       | <https://github.com/chenzhiy2001/code-debug>                | 108                                                          |
+| ruprobes                  | 我们移植的uprobe模块和详细的移植文档                         | <https://github.com/chenzhiy2001/ruprobes>                  | 0                                                            |
+| rcore-ebpf(全小写)        | 整合了ebpf,kprobe,uprobe模块的rCore-Tutorial-v3              | <https://github.com/chenzhiy2001/rcore-ebpf>                | 0                                                            |
+| uCore-Tutorial-Test-2022A | rcore-ebpf的C程序支持                                        | <https://github.com/chenzhiy2001/uCore-Tutorial-Test-2022A> | 0                                                            |
+| trap_context_riscv        | trap_context crate （用于uprobe移植）                        | <https://github.com/chenzhiy2001/trap_context_riscv>        | 0                                                            |
+| rCore-Tutorial-v3         | 修改版rCore-Tutorial-v3，主要包括多个实验分支的调试器部分功能适配，以及main分支的调试器全功能适配 | <https://github.com/chenzhiy2001/rCore-Tutorial-v3>         | （包括所有分支）                      |
+| qemu-system-riscv64       | 修改版的Qemu虚拟机                                           | <https://github.com/chenzhiy2001/qemu-system-riscv64>       | 0(对Qemu做的修改) |
+| rustsbi-qemu              | 修改版的RustSBI                                              | <https://github.com/chenzhiy2001/rustsbi-qemu>              | 0(对RustSBI做的修改) |
+
+### 去年的工作概要：
 
 构建了一款支持Rust操作系统内核开发的源代码级调试工具，该工具具备如下特征
 (1)基于QEMU和GDB，支持跨内核态和用户态的源代码跟踪调试;
@@ -16,7 +30,23 @@
 5. 在没有跳板页，且是双页表的 OS 的情况下， continue不能跳转到断点
 
 # 今年的工作：
-
+#### 工作概要：
++ 对去年工作的完善
+1. 解决由调试器自动设置的断点不会在 VSCode 里面显示出来的问题
+2. 完善边界断点
+3. 将断点组功能改造为状态机
+4. 添加 showInformationMessage 函数
+5. 改善有的情况continue不能跳转到断点的情况
++ 新的工作：
+1. 增加通过SSH进行OS调试的功能 
+2. 提升 Debug Console 输出内容的可读性
+3. 修改launch.json 文件
+4. 通过右键菜单添加/取消边界断点
+5. 修改插件本身的编译配置文件 tsconfig.json  
+#### 后续工作安排：
+- 将调试器适配多个操作系统
+- 结合硬件
+#### 详细工作总结如下所示
 ## 对去年工作的完善：
 
 ### 1. 解决由调试器自动设置的断点不会在 VSCode 里面显示出来的问题
