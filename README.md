@@ -66,20 +66,21 @@
 
 - 去年的工作将边界断点独立于断点组，若内核的出入口断点均在内核的符号表里，在用户态运行时内核的符号表以及卸载，无法触发边界断点回到内核态。  
 
-在实际实现时将边界断点包含在断点组中，支持动态设置和取消（但是逻辑上仍然独立于断点组）。
+在实际实现时将边界断点包含在断点组属性中，支持动态设置和取消（但是逻辑上仍然独立于断点组）。
 我们选择的方法是直接设置边界断点，所有地方都用完整的文件路径来解决断点组名字和断点文件名的对应的问题。
 
-微软提供了足够多的 API 来实现我们的功能。由于 Breakpoint 的构造方法是 protected 的，而且插件的代码里面有三个 Breakpoint 类:vscode.Breakpoint, DAP 的 breakpoint，DAP 后端（mi2.ts）的 breakpoint。我们把 isBorder 这个属性交给断点组管理模块去管理。因此，在 Debug Adapter 层面是先设置断点，再给断点添加“边界”属性的。（在 VSCode 的层面则不是）
+我们之前把 isBorder 这个属性交给断点组管理模块去管理。因此，在 Debug Adapter 层面是先设置断点，再给断点添加“边界”属性的。（在 VSCode 的层面则不是）
 
 ```ts
 	vscode.debug.addBreakpoints([breakpoint]);//this will go through setBreakPointsRequest in mibase.ts
 	vscode.debug.activeDebugSession?.customRequest('setBreakpointAsBorder',args[0]);
 
 ```
-由于Debug Adapter 会对这些断点做很多的操作，把断点组和 Debug Adapter 本身的断点管理功能合为一体不是好事，怕会造成更多麻烦。之前在断点组里面直接存SetBreakpointArguments，而不是 BreakpointGroupBrks 之类的策略没有问题，因为断点组管理模块的作用就是在合适的时机进行断点设置，而非存储某个断点。而且 SetBreakpointArguments 里面已经包含了断点所需要的所有信息。只不过我们要继承 SetBreakpointArguments，添加一个 isBorder 属性。然后通过 customRequest 对这个 isBorder 属性做更改。对于怎么找到某个 SetBreakpointArguments，暴力查找已经是风险最低的办法。唯一的优化措施是先通过用户提交的地址转断点组函数，找到断点组，再在断点组里面暴力查找。但是考虑到用户不会设置很多断点，这么做没有太大意义。
+由于Debug Adapter 会对这些断点做很多的操作，把断点组和 Debug Adapter 本身的断点管理功能合为一体不是好事，怕会造成更多麻烦。
+之前在断点组里面直接存SetBreakpointArguments的策略没有问题，因为断点组管理模块的作用就是在合适的时机进行断点设置，而非存储某个断点。而且 SetBreakpointArguments 里面已经包含了断点所需要的所有信息。只不过我们要继承 SetBreakpointArguments，添加一个 isBorder 属性。然后通过 customRequest 对这个 isBorder 属性做更改，非常麻烦。
 
-回到“设置断点-断点偏移-用户把偏移后的断点设置为边界”的方案，这样就不用解决断点偏移的问题。同时，边界的信息并不存储在断点的数据结构里，而是存在断点组的数据结构里，这样就不用去查找到某个断点的数据结构，再将它改为“边界”。
-这样做还有一个好处，无需改动原有的断点数据结构（因为边界的信息不再存储在断点的数据结构中，而是存在断点组的属性中）。再增加一个“去除本地址空间的边界断点”功能，就同时实现了边界断点的更改。至于把边界断点改回普通断点的功能就没有必要了。
+我们现在不把边界的信息并存储在断点的数据结构里，而是存在断点组的数据结构里，这样就不用去查找到某个断点的数据结构，再将它改为“边界”。
+这样做还有一个好处，无需改动原有的断点数据结构（因为边界的信息不再存储在断点的数据结构中，而是存在断点组的属性中）。再增加一个“去除本地址空间的边界断点”功能，就同时实现了边界断点的更改。
 断点组切换的代码除了完全清空所有断点组信息（removeallclibreakpoint）的情况外，断点组本身是不会被删除的（断点组里面的断点可能会被删除）。因此我们把边界的信息附加在断点组上，做到了和之前代码的兼容，因此代码量小，现有的断点组切换的代码完全不需要更改。
 
 ```ts
@@ -168,11 +169,12 @@
 <span id="完善3"></span>
 ### 3. 将断点组功能改造为状态机
 
-由于之前代码之前散落在各处，没有可读性，而且许多代码实现起来很是复杂，我们决定将之前的代码状态机化来更清晰的描述行为和状态变化。
+由于之前代码之前散落在各处，没有可读性，而且许多代码实现起来很是复杂，我们决定将之前的代码重构，用状态机的形式来更清晰的描述行为和状态变化。
 
 我们构造的状态机只管理 extension.ts，任何 mibase.ts 的操作都要提到 extension.ts 来完成。因为我们的调试器本质上是模拟用户操作，而用户操作的相关逻辑就是在 extension.ts 里实现的。  
 我们的做法是：
-维持原有的断点组，将状态机作为断点组上层的东西。  
+维持原有的断点组，将状态机作为断点组上层的东西。
+根据当前事件触发相应动作，达到状态的改变。
 
 #### 使用enum 总结所有我们要实现的功能：
 ```typescript
@@ -233,6 +235,7 @@ var f = new Function(function.arguments, function.body);
 之前为了提供“停下”的信号，在四五个地方（断点触发，单步结束......）执行后发送“停下”的事件。
 但是我们发现，stopEvent 确实会在每次 OS 停下来时被创建，只处理一种停下来的情况，不包括因为断点而停下来的情况。所以只要在 stopevent 一个地方设 stop 的“钩子断点”即可。
 
+状态改变具体逻辑如下：
 状态机的初始状态是"kernel"。当停下时，改变状态。
 
 ```ts
@@ -385,24 +388,6 @@ var f = new Function(function.arguments, function.body);
 
 ```
 
-相比于旧版的没有状态机的代码里，这类 action 实现起来非常麻烦，例如`updateCurrentAddrAtStop`函数：
-
-```ts
-	/// update currentAddr, currentPrivilegeLevel, privilegeLevelJustChanged
-	public updateCurrentAddrAtStop(info:MINode) {
-		this.currentAddr = Number(getAddrFromMINode(info));
-		let newCurrentPrivilegeLevel = this.addr2privilege(this.currentAddr);
-
-		if (newCurrentPrivilegeLevel !== this.currentPrivilegeLevel){
-			this.privilegeLevelJustChanged=true;
-		}else{
-			this.privilegeLevelJustChanged=false;
-		}
-		this.currentPrivilegeLevel = newCurrentPrivilegeLevel;
-	}
-```
-需要同时更新`currentAddr, currentPrivilegeLevel,privilegeLevelJustChanged`。这样的代码非常难维护。
-
 在构造了状态机`OSStateMachine`和状态机的转换方法`OSStateTransition`之后，我们不再需要手动更新特权级和“特权级改变过”的 flag 了。我们只需要获取 PC 寄存器，判断它的区间，如果是所需区间，激活“到达 xx 特权级”的事件即可。
 
 过去是在断点触发的时候判断这个断点是不是边界，现在由于状态机的表述方式不同，改为需要判断“我在哪里”时，发送一个单独的 GDB 命令来获得这个信息。在 google 上找到 gdb 命令（`where`），查找文档得到对应的 MI 命令（`-stack-list-frames`），查找代码发现插件已经有了一个得封装很好的实现了（`getStack`），因此不需要像之前那样用硬编码的方式从 MINode 里获取数据了。
@@ -553,10 +538,10 @@ step(reverse: boolean = false): Thenable<boolean> {
 ```
 
 #### 符号表文件的切换
-符号表文件和断点组在 rCore-Tutorial-v3 里是一对一的
-，但是其他 OS 就不能保证了。而且，rCore-Tutorial-v3 的内核和用户符号表有时可以共存，有时不行，不知道在其他 OS 上是什么样子。因此符号表文件随着断点组切换而切换的逻辑作为用户提交代码。之前的做法是 添加新符号表-移除旧断点-打新断点 根本没有去除符号表。之前内核的符号表是不删去的。  这样其实不完善。   
-由于断点是依赖符号表的，合理的顺序应该是 移除旧断点-移除旧符号表-添加新符号表-添加新断点。如果是这个顺序的话，符号表切换的逻辑就得放在 断点组切换 的函数里面，不能单列一个函数了。因此我们不能把整个符号表切换的逻辑抽离出来作为用户自定义代码。我们只能将 断点组=>符号表文件路径 的映射作为自定义代码。
+符号表文件和断点组在 rCore-Tutorial-v3 里是一对一的，但是其他 OS 就不能保证了。而且，rCore-Tutorial-v3 的内核和用户符号表有时可以共存，有时不行，不知道在其他 OS 上是什么样子，因此符号表文件随着断点组切换而切换的逻辑作为用户提交代码。之前的做法是 添加新符号表-移除旧断点-打新断点 根本没有去除符号表。之前内核的符号表是不删去的，这样其实不完善。   
+由于断点是依赖符号表的，合理的顺序应该是 移除旧断点-移除旧符号表-添加新符号表-添加新断点。**如果是这个顺序的话，符号表切换的逻辑就得放在 断点组切换 的函数里面，不能单列一个函数了。因此我们不能把整个符号表切换的逻辑抽离出来作为用户自定义代码**。我们只能将 断点组=>符号表文件路径 的映射作为自定义代码。
 
+进行了以下修改：
 之前 addDebugSymbol 和 removeDebugSymbol 是直接在 mibase.ts 里调用 sendCliCommand，这次放到 mi2.ts 里：
 
 ```ts
@@ -1225,7 +1210,7 @@ code-debug插件分为两部分，扩展和调试适配器，这两部分是由�
 
 + 经过调试排查，我们发现不能从用户态回到内核态的原因是用户态的边界未被正确设置。
     + kernel/syscall.c是负责处理已经进到内核之后的syscall处理流程。我们需要的是用户态的syscall接口，在usys.S中。
-    + 因为usys.S文件中有多个ecall，也就是说**用户态有多个边界断点**（因为xv6在用户态没有一个专门的syscall()处理函数，而是每个syscall的调用单独处理）。我们的调试器一开始是基于ebpf写的，所以用户和内核的边界都只有一个，接下来需要将边界改成数组，添加新的边界断点时旧的会被替换掉。所以需要**修改调试器的边界代码及相关处理函数**。   
+    + 因为usys.S文件中有多个ecall，也就是说**用户态有多个边界断点**（因为xv6在用户态没有一个专门的syscall()处理函数，而是每个syscall的调用单独处理）。我们的调试器一开始是基于ebpf写的，所以用户和内核的边界都只有一个，添加新的边界断点时旧的会被替换掉。所以需要将边界改成数组，并**修改调试器的边界代码及相关处理函数**。   
   
 ```
 export class Border  {
