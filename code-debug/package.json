@@ -35,22 +35,22 @@
 		"menus": {
 			"editor/title": [
 				{
-					"when": "resourceLangId == rust",
+					"when": "resourceLangId == true",
 					"command": "code-debug.removeAllCliBreakpoints",
 					"group": "navigation"
 				},
 				{
-					"when": "resourceLangId == rust",
+					"when": "resourceLangId == true",
 					"command": "code-debug.setBorderBreakpointsFromLaunchJSON",
 					"group": "navigation"
 				},
 				{
-					"when": "resourceLangId == rust",
+					"when": "resourceLangId == true",
 					"command": "code-debug.setHookBreakpointsFromLaunchJSON",
 					"group": "navigation"
 				},
 				{
-					"when": "resourceLangId == rust",
+					"when": "resourceLangId == true",
 					"command": "code-debug.disableCurrentSpaceBreakpoints",
 					"group": "navigation"
 				}
