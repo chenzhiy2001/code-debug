@@ -120,14 +120,14 @@ export class Border  {
 class BreakpointGroup {
 	name: string;
 	setBreakpointsArguments: DebugProtocol.SetBreakpointsArguments[];
-	border?:Border; // can be a border or undefined
+	borders?:Border[]; // can be a border or undefined
 	hooks:HookBreakpoints; //cannot be `undefined`. It should at least an empty array `[]`.
-	constructor(name: string, setBreakpointsArguments: DebugProtocol.SetBreakpointsArguments[], hooks:HookBreakpoints, border:Border ) {
+	constructor(name: string, setBreakpointsArguments: DebugProtocol.SetBreakpointsArguments[], hooks:HookBreakpoints, borders?:Border[] ) {
 		console.log(name);
 		this.name = name;
 		this.setBreakpointsArguments = setBreakpointsArguments;
 		this.hooks = hooks;
-		this.border = border;
+		this.borders = borders;
 	}
 }
 //负责断点缓存，转换等
@@ -139,7 +139,7 @@ export class BreakpointGroups {
 	constructor(currentBreakpointGroupName: string, debugSession: MI2DebugSession, nextBreakpointGroup:string) {
 		this.debugSession = debugSession;
 		this.groups = [];
-		this.groups.push(new BreakpointGroup(currentBreakpointGroupName, [], new HookBreakpoints([]), undefined));
+		this.groups.push(new BreakpointGroup(currentBreakpointGroupName, [], new HookBreakpoints([]), []));
 		this.currentBreakpointGroupName = currentBreakpointGroupName;
 		this.nextBreakpointGroup = nextBreakpointGroup;
 	}
@@ -174,7 +174,7 @@ export class BreakpointGroups {
 			}
 		}
 		if (newIndex === -1) {
-			this.groups.push(new BreakpointGroup(updateTo, [], new HookBreakpoints([]), undefined));
+			this.groups.push(new BreakpointGroup(updateTo, [], new HookBreakpoints([]), []));
 			newIndex = this.groups.length - 1;
 		}
 		let oldIndex = -1;
@@ -184,7 +184,7 @@ export class BreakpointGroups {
 			}
 		}
 		if (oldIndex === -1) {
-			this.groups.push(new BreakpointGroup(this.getCurrentBreakpointGroupName(), [], new HookBreakpoints([]), undefined));
+			this.groups.push(new BreakpointGroup(this.getCurrentBreakpointGroupName(), [], new HookBreakpoints([]), []));
 			oldIndex = this.groups.length - 1;
 		}
 		this.groups[oldIndex].setBreakpointsArguments.forEach((e) => {
@@ -261,7 +261,7 @@ export class BreakpointGroups {
 			}
 		}
 		if (found === -1) {
-			this.groups.push(new BreakpointGroup(groupName, [], new HookBreakpoints([]), undefined));
+			this.groups.push(new BreakpointGroup(groupName, [], new HookBreakpoints([]), []));
 			found = this.groups.length - 1;
 		}
 		let alreadyThere = -1;
@@ -284,11 +284,11 @@ export class BreakpointGroups {
 			for(const group of this.groups){
 				if(group.name === groupNameOfBorder){
 					groupExists = true;
-					group.border = border;
+					group.borders.push(border);
 				}
 			}
 			if(groupExists === false){
-				this.groups.push(new BreakpointGroup(groupNameOfBorder, [], new HookBreakpoints([]), border));
+				this.groups.push(new BreakpointGroup(groupNameOfBorder, [], new HookBreakpoints([]), [border]));
 			}
 		}
 	}
@@ -300,7 +300,7 @@ export class BreakpointGroups {
 			for(const group of this.groups){
 				if(group.name === groupNameOfBorder){
 					groupExists = true;
-					group.border = undefined;
+					group.borders = [];
 				}
 			}
 			if(groupExists === false){
@@ -1351,7 +1351,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 	}
 
 	public async getStringVariable(name:string):Promise<string>{
-		const node = await this.miDebugger.sendCliCommand('x /s ' + name + '.vec.buf.ptr.pointer.pointer');
+		const node = await this.miDebugger.sendCliCommand('x /s ' + name );
 		const resultstring = this.miDebugger.getOriginallyNoTokenMINodes(node.token)[0].outOfBandRecord[0].content;
 		this.showInformationMessage("`getStringVariable` got string: " + resultstring);
 		return /"(.*?)"/.exec(resultstring)[1];// we want things INSIDE double quotes so it's [1], the first captured group.
@@ -1395,33 +1395,49 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 			this.showInformationMessage('doing action: check_if_kernel_to_user_border_yet');
 			let filepath:string = "";
 			let lineNumber:number = -1;
-			const kernelToUserBorderFile = this.breakpointGroups.getCurrentBreakpointGroup().border?.filepath;
-			const kernelToUserBorderLine = this.breakpointGroups.getCurrentBreakpointGroup().border?.line;
+			const kernelToUserBorders = this.breakpointGroups.getCurrentBreakpointGroup().borders; // 获取所有边界断点
+			//const kernelToUserBorderFile = this.breakpointGroups.getCurrentBreakpointGroup().border?.filepath;
+			//const kernelToUserBorderLine = this.breakpointGroups.getCurrentBreakpointGroup().border?.line;
 			//todo if you are trying to do multi-core debugging, you might need to modify the 3rd argument.
 			this.miDebugger.getStack(0, 1, this.recentStopThreadID).then(v=>{
 				filepath = v[0].file;
 				lineNumber = v[0].line;
-				if (filepath === kernelToUserBorderFile && lineNumber === kernelToUserBorderLine){
-					this.OSStateTransition(new OSEvent(OSEvents.AT_KERNEL_TO_USER_BORDER));
-				}
-			});
+
+				if (kernelToUserBorders) {
+					for (const border of kernelToUserBorders) {
+					 if (filepath === border.filepath && lineNumber === border.line) {
+					 this.OSStateTransition(new OSEvent(OSEvents.AT_KERNEL_TO_USER_BORDER));
+					 break;
+					 }
+					}
+					 }
+				 });
+				
 		}
 		// obviously we are at current user breakpoint group when executing this action
 		else if(action.type === DebuggerActions.check_if_user_to_kernel_border_yet){
 			this.showInformationMessage('doing action: check_if_user_to_kernel_border_yet');
 			let filepath:string = "";
 			let lineNumber:number = -1;
-			const userToKernelBorderFile = this.breakpointGroups.getCurrentBreakpointGroup().border?.filepath;
-			const userToKernelBorderLine = this.breakpointGroups.getCurrentBreakpointGroup().border?.line;
+			const userToKernelBorders = this.breakpointGroups.getCurrentBreakpointGroup().borders; // 获取所有边界断点
+			//const userToKernelBorderFile = this.breakpointGroups.getCurrentBreakpointGroup().border?.filepath;
+			//const userToKernelBorderLine = this.breakpointGroups.getCurrentBreakpointGroup().border?.line;
 			//todo if you are trying to do multi-core debugging, you might need to modify the 3rd argument.
 			this.miDebugger.getStack(0, 1, this.recentStopThreadID).then(v=>{
 				filepath = v[0].file;
 				lineNumber = v[0].line;
-				if (filepath === userToKernelBorderFile && lineNumber === userToKernelBorderLine){
-					this.OSStateTransition(new OSEvent(OSEvents.AT_USER_TO_KERNEL_BORDER));
-				}
-			});
 
+				 // 检查当前的文件路径和行号是否与任何一个边界断点匹配
+				 if (userToKernelBorders) {
+					for (const border of userToKernelBorders) {
+					if (filepath === border.filepath && lineNumber === border.line) {
+					 this.OSStateTransition(new OSEvent(OSEvents.AT_USER_TO_KERNEL_BORDER));
+					 break;
+				 }
+				}
+			 } 
+			 });
+			
 		}
 		else if(action.type === DebuggerActions.start_consecutive_single_steps){
 			this.showInformationMessage("doing action: start_consecutive_single_steps");
