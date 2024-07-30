@@ -1,0 +1,89 @@
+### 修改qemu启动参数
+launch文件写完之后，我们发现vscode终端一直没有输出，排查之后发现是因为之前qemu的路径沿用ebpf的路径，经过修改后可以正常输入了。
+```
+launch.json
+{
+"version": "0.2.0",
+"configurations": [
+
+    {
+        "type": "gdb",
+        "request": "attach",
+        "name": "Attach to Qemu",
+        "autorun": ["add-symbol-file ${workspaceFolder}/kernel/kernel"],
+        "target": ":1234",
+        "remote": true,
+        "cwd": "/home/kaining/xv6-riscv",
+        "valuesFormatting": "parseText",
+        "gdbpath": "${workspaceFolder}/riscv64-unknown-elf-gdb-rust.sh",
+        "showDevDebugOutput":true,
+        "internalConsoleOptions": "openOnSessionStart",
+        "printCalls": true,
+        "stopAtConnect": true,
+        "qemuPath": "$qemu-system-riscv64",
+        "qemuArgs": [
+            "-machine",
+            "virt",
+            "-bios",
+            "none",
+            "-kernel",
+            "kernel/kernel",
+            "-m",
+            "128M",
+            "-smp",
+            "2", 
+            "-nographic",
+            "-global",
+            "virtio-mmio.force-legacy=false",
+            "-drive",
+            "file=fs.img,if=none,format=raw,id=x0",
+            "-device",
+            "virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0",
+            "-s",
+            "-S"
+        ],
+        "program_counter_id": 32,
+        "first_breakpoint_group": "kernel",
+        "second_breakpoint_group":"${workspaceFolder}/user/init.c",
+        "kernel_memory_ranges":[["0x80000000","0xffffffffffffffff"]],
+        "user_memory_ranges":[["0x0000000000000000","0x80000000"]],
+        "border_breakpoints":[
+            {
+                "filepath": "${workspaceFolder}/kernel/syscall.c",
+                "line": 141
+            },
+            {
+                "filepath": "${workspaceFolder}/kernel/trap.c",
+                "line": 105
+            }
+        ],
+        "hook_breakpoints":[
+            {
+                "breakpoint": {
+                    "file": "${workspaceFolder}/kernel/sysfile.c",
+                    "line": 441
+                },
+                "behavior": {
+                    "isAsync": true,
+                    "functionArguments": "",
+                    "functionBody": "let p=await this.getStringVariable('path'); return '${workspaceFolder}/user/'+p+'.c'"
+                }
+            }
+        ],
+        "filePathToBreakpointGroupNames":{
+            "isAsync": false,
+            "functionArguments": "filePathStr",
+            "functionBody": "     if (filePathStr.includes('kernel')) {        return ['kernel'];    }    else if (filePathStr.includes('user')) {        return [filePathStr];    }    else        return ['kernel'];"
+        },
+        "breakpointGroupNameToDebugFilePath":{
+            "isAsync": false,
+            "functionArguments": "groupName",
+            "functionBody": "if (groupName === 'kernel') {return '${workspaceFolder}/kernel';}  else{ let pathSplited = groupName.split('/'); let filename = pathSplited[pathSplited.length - 1].split('.'); let filenameWithoutExtension = filename.slice(0, -1).join('.'); return '${workspaceFolder}/user/' + filenameWithoutExtension;}"
+            
+        }
+    },
+],
+}
+```
+### 存在的问题
+但是调试器只能进行内核到用户的切换，不能进行用户态到内核态的转换，还需要继续排查原因
