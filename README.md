@@ -1,3 +1,4 @@
+
 # Proj158-支持Rust语言的源代码级内核调试工具
 ### 项目仓库
 
@@ -30,31 +31,37 @@
 5. 在没有跳板页，且是双页表的 OS 的情况下， continue不能跳转到断点
 
 # 今年的工作：
-#### 工作概要：
-+ 对去年工作的完善
-1. 解决由调试器自动设置的断点不会在 VSCode 里面显示出来的问题
-2. 完善边界断点
-3. 将断点组功能改造为状态机
-4. 添加 showInformationMessage 函数
-5. 改善有的情况continue不能跳转到断点的情况
-+ 新的工作：
-1. 增加通过SSH进行OS调试的功能 
-2. 提升 Debug Console 输出内容的可读性
-3. 修改launch.json 文件
-4. 通过右键菜单添加/取消边界断点
-5. 修改插件本身的编译配置文件 tsconfig.json  
+#### 工作概要：    
++ [对去年工作的完善](#对去年工作的完善)     
+1.[解决由调试器自动设置的断点不会在 VSCode 里面显示出来的问题](#完善1)    
+2.[完善边界断点](#完善2)    
+3. [将断点组功能改造为状态机](#完善3)    
+4. [添加 showInformationMessage 函数](#完善4)    
+5. [改善有的情况continue不能跳转到断点的情况](#完善5)
+  
++ [新的工作](#新的工作)    
+1. [增加通过SSH进行OS调试的功能](#新1)    
+2. [提升 Debug Console 输出内容的可读性](#新2)    
+3. [修改launch.json 文件](#新3)    
+4. [通过右键菜单添加/取消边界断点](#新4)    
+5. [修改插件本身的编译配置文件 tsconfig.json](#新5)    
+6. [让调试器适配xv6](#新6)
+
 #### 后续工作安排：
-- 将调试器适配多个操作系统
 - 结合硬件
+  
 #### 详细工作总结如下所示
+
+<span id="对去年工作的完善"></span>
 ## 对去年工作的完善：
 
+<span id="完善1"></span>
 ### 1. 解决由调试器自动设置的断点不会在 VSCode 里面显示出来的问题
 + 在过去，由于VSCode没有提供“在VSCode中设置断点”的API，我们的插件无法模拟用户设置断点的操作。我们如果想要自动地设置断点，只能从Debug Adapter入手，让Debug Adapter知道断点设置了，然后再告诉GDB，但是VSCode是根本不知道这个断点存在的，因此不会显示出来。  
 
 现在，VSCode在某个更新中增加了“在VSCode中设置断点”的API，我们的插件可以利用这个API来模拟用户设置断点的操作，这样VSCode知道了断点的存在，断点就可以了显示出来了。
 
-
+<span id="完善2"></span>
 ### 2. 完善边界断点
 
 - 去年的工作将边界断点独立于断点组，若内核的出入口断点均在内核的符号表里，在用户态运行时内核的符号表以及卸载，无法触发边界断点回到内核态。  
@@ -158,7 +165,7 @@
 ```
 如果没给边界的话就不会切换断点组，就在当前断点组一直运行下去。
 
-
+<span id="完善3"></span>
 ### 3. 将断点组功能改造为状态机
 
 由于之前代码之前散落在各处，没有可读性，而且许多代码实现起来很是复杂，我们决定将之前的代码状态机化来更清晰的描述行为和状态变化。
@@ -781,7 +788,7 @@ rCore-Tutorial-v3 里 user/src/syscall.rs 里的断点就属于所有用户态�
 
 ```
 
-
+<span id="完善4"></span>
 ### 4. 添加 showInformationMessage 函数，代替 mibase.ts 中无法使用的 console.log
 使用 sendEvent() 方法将构造的事件对象发送给调试客户端，以展示信息提示给用户。
 
@@ -795,7 +802,7 @@ rCore-Tutorial-v3 里 user/src/syscall.rs 里的断点就属于所有用户态�
 	}
     ```
 
-
+<span id="完善5"></span>
 ### 5. 有的情况continue不能跳转到断点
 
 + 之前在内核出口边界设用户态程序开头位置的断点，然后直接 continue 就可以跳转到这个断点。这是因为
@@ -804,8 +811,10 @@ rCore-Tutorial-v3 里 user/src/syscall.rs 里的断点就属于所有用户态�
 
 由于今年新实现了单步步进功能，我们可以通过不断的自动的单步（step instruction）每单步一次就查看内存地址来确定是否到达新的特权级。
 
-## 新增的功能：
-### 增加通过SSH进行OS调试的功能  
+<span id="新的工作"></span>
+## 新的工作：
+<span id="新1"></span>
+### 1. 增加通过SSH进行OS调试的功能  
 我们为了进一步实现通过SSH进行远程操作系统调试的功能，通过以下步骤来集成SSH功能：
 
 首先，初始化调试会话，`initializeRequest` 方法设置了调试会话支持的各种功能，例如支持条件断点、函数断点、内存读写等。这些功能通过修改 `response.body` 的不同属性来指定。接着，用`launchRequest` 方法启动调试。然后，使用提供的GDB路径和其他参数（如调试器参数和环境变量）创建 `MI2` 类的实例。根据 `args.pathSubstitutions` 设置源文件的路径替换规则以便调试器可以正确地定位到原始源文件。配置好调试会话后，就开始处理ssh配置。如果提供了SSH参数 (`args.ssh`)，则进入SSH配置分支：
@@ -1028,8 +1037,8 @@ ssh(args: SSHArguments, cwd: string, target: string, procArgs: string, separateC
 ```
 以上所用到的SSH 配置是通过 args 参数传递给 ssh 方法的，args 是一个 SSHArguments 类型的对象，包含了建立 SSH 连接所需的所有参数和配置（在`backend.ts`文件中）。
 
-
-###  提升 Debug Console 输出内容的可读性
+<span id="新2"></span>
+###  2. 提升 Debug Console 输出内容的可读性
 
 我们在mi2.ts中定义了多个处理函数，用于接收和处理来自调试器（如 GDB）的标准输出（stdout）和标准错误（stderr）。
 - `stdout` 和 `stderr` 函数将接收到的数据追加到 `buffer` 和 `errbuf` 字符串中。这允许函数按行处理输出，而不是字符一个接一个地处理。
@@ -1144,13 +1153,14 @@ onOutput(str: string) {
 
 - 提供帮助文档和帮助视频  
 
-
-### 修改launch.json 文件
+<span id="新3"></span>
+### 3. 修改launch.json 文件
 - 用户可以里提交自定义代码
 - launch.json 支持${workspacefolder}插值（之前有一些参数是不能用这个插值的），大大提升了配置文件的便携性
 [修改后的文件](https://github.com/chenzhiy2001/code-debug/blob/master/%E5%AE%89%E8%A3%85%E4%B8%8E%E4%BD%BF%E7%94%A8/ebpf_launch.json)
 
-### 通过右键菜单添加/取消边界断点
+<span id="新4"></span>
+### 4. 通过右键菜单添加/取消边界断点
 
 + 根据我们现在的状态机，边界断点应该包含在断点组里面，所以像之前那样发一个 customRequest，让 GDB 直接设断点（不经过 mibase.ts 的 setBreakPointsRequest，因此不会保存到断点组里面）就不合适了。
 GoToKernel 等几个按钮的功能要么是不必要的，要么就是已经通过新的状态机自动化地实现了。
@@ -1159,11 +1169,303 @@ GoToKernel 等几个按钮的功能要么是不必要的，要么就是已经通
 
 基于以上原因，我们移除了移除GoToKernel 等几个按钮，添加了一个右键菜单，用户在某个断点上面右键单击即可将这个断点变成边界断点。这样边界断点除了通过配置文件添加，也可以通过右键菜单添加或者取消。
 
-### 修改插件本身的编译配置文件 tsconfig.json  
+<span id="新5"></span>
+### 5. 修改插件本身的编译配置文件 tsconfig.json  
 使得编译本插件的时候忽略文档文件夹和根文件夹下 60m 的“演示视频.mp4”，从而极大减小编译出的插件二进制包的大小
+<span id="新6"></span>
+### 6. 移植xv6
+#### xv6-riscv
 
-### 适配性提升 （待完成）
-- 适配ArceOs
-- 适配xv6
-- 适配starry
+xv6-riscv 是一个小型的 Unix 第六版操作系统实现，包含了基本的操作系统功能，如进程管理、内存管理、文件系统、设备驱动和系统调用。
+xv6-riscv 采用单内核结构，所有的操作系统服务都在内核模式下运行。内核代码包括内存管理、进程管理、文件系统、驱动程序和系统调用接口等部分。
+
+#### 更新package.json
+由于之前的调试器是仅rust语言可见的，我们修改了 package.json 文件，让它能够适配所有语言。
+```
+"menus": {
+			"editor/title": [
+				{
+					"when": "resourceLangId == true",
+					"command": "code-debug.removeAllCliBreakpoints",
+					"group": "navigation"
+				},
+				{
+					"when": "resourceLangId == true",
+					"command": "code-debug.setBorderBreakpointsFromLaunchJSON",
+					"group": "navigation"
+				},
+				{
+					"when": "resourceLangId == true",
+					"command": "code-debug.setHookBreakpointsFromLaunchJSON",
+					"group": "navigation"
+				},
+				{
+					"when": "resourceLangId == true",
+					"command": "code-debug.disableCurrentSpaceBreakpoints",
+					"group": "navigation"
+				}
+			],
+        }
+```
+
+#### 编写launch.json
+
++ 配置文件需要找到qemu参数，xv6 内核态和用户态转换的边界，最后写出获取路径的函数。 
+初步编写配置文件后发现只能从内核态转换到用户态，不能从用户态回到内核态，排查原因无果后我们决定**调试调试器**来进一步排查原因。
+相关文档
+Debugger Extension | Visual Studio Code Extension API
++ 调试器的构成及调试
+code-debug插件分为两部分，扩展和调试适配器，这两部分是由两个进程来控制。所以如果调试的话应该是启动两个调试配置，一个是launch extension，另一个是server。
+    + launch extension    
+调试extension的部分，更具体地说是extension.ts文件，用它调试就会启动一个新窗口（扩展开发宿主）
+    + server    
+调试调试适配器的部分，即除了extension.ts文件的其他文件，这部分的调试需要进行一个配置（code-debug sever的调试配置），在code-debug中的launch.json已经配置好了，
+里面有一个4711的端口号，启动这个配置以后，会监听这个端口号。
+在我们要调试的项目中，添加一个``` "debugServer": 4711,```的配置，使两者可以传递信息。
+
++ 经过调试排查，我们发现不能从用户态回到内核态的原因是用户态的边界未被正确设置。
+    + kernel/syscall.c是负责处理已经进到内核之后的syscall处理流程。我们需要的是用户态的syscall接口，在usys.S中。
+    + 因为usys.S文件中有多个ecall，也就是说**用户态有多个边界断点**（因为xv6在用户态没有一个专门的syscall()处理函数，而是每个syscall的调用单独处理）。我们的调试器一开始是基于ebpf写的，所以用户和内核的边界都只有一个，接下来需要将边界改成数组，添加新的边界断点时旧的会被替换掉。所以需要**修改调试器的边界代码及相关处理函数**。   
+  
+```
+export class Border  {
+	filepath:string;
+	line:number;
+	constructor(filepath:string, line:number){
+		this.filepath = filepath;
+		this.line = line;
+	}
+}
+class BreakpointGroup {
+	name: string;
+	setBreakpointsArguments: DebugProtocol.SetBreakpointsArguments[];
+	borders?:Border[]; // can be a border or undefined
+	hooks:HookBreakpoints; //cannot be `undefined`. It should at least an empty array `[]`.
+	constructor(name: string, setBreakpointsArguments: DebugProtocol.SetBreakpointsArguments[], hooks:HookBreakpoints, borders?:Border[] ) {
+		console.log(name);
+		this.name = name;
+		this.setBreakpointsArguments = setBreakpointsArguments;
+		this.hooks = hooks;
+		this.borders = borders;
+	}
+}
+public updateBorder(border: Border) {
+		const result = eval(this.debugSession.filePathToBreakpointGroupNames)(border.filepath);
+		const groupNamesOfBorder:string[] = result;
+		for(const groupNameOfBorder of groupNamesOfBorder){
+			let groupExists = false;
+			for(const group of this.groups){
+				if(group.name === groupNameOfBorder){
+					groupExists = true;
+					group.borders.push(border);
+				}
+			}
+			if(groupExists === false){
+				this.groups.push(new BreakpointGroup(groupNameOfBorder, [], new HookBreakpoints([]), [border]));
+			}
+		}
+	}
+else if(action.type === DebuggerActions.check_if_kernel_to_user_border_yet){
+			this.showInformationMessage('doing action: check_if_kernel_to_user_border_yet');
+			let filepath:string = "";
+			let lineNumber:number = -1;
+			const kernelToUserBorders = this.breakpointGroups.getCurrentBreakpointGroup().borders; // 获取所有边界断点
+			//const kernelToUserBorderFile = this.breakpointGroups.getCurrentBreakpointGroup().border?.filepath;
+			//const kernelToUserBorderLine = this.breakpointGroups.getCurrentBreakpointGroup().border?.line;
+			//todo if you are trying to do multi-core debugging, you might need to modify the 3rd argument.
+			this.miDebugger.getStack(0, 1, this.recentStopThreadID).then(v=>{
+				filepath = v[0].file;
+				lineNumber = v[0].line;
+
+				if (kernelToUserBorders) {
+					for (const border of kernelToUserBorders) {
+					 if (filepath === border.filepath && lineNumber === border.line) {
+					 this.OSStateTransition(new OSEvent(OSEvents.AT_KERNEL_TO_USER_BORDER));
+					 break;
+					 }
+					}
+					 }
+				 });
+				
+		}
+		
+		else if(action.type === DebuggerActions.check_if_user_to_kernel_border_yet){
+			this.showInformationMessage('doing action: check_if_user_to_kernel_border_yet');
+			let filepath:string = "";
+			let lineNumber:number = -1;
+			const userToKernelBorders = this.breakpointGroups.getCurrentBreakpointGroup().borders; 
+			const userToKernelBorderFile = this.breakpointGroups.getCurrentBreakpointGroup().border?.filepath;
+			const userToKernelBorderLine = this.breakpointGroups.getCurrentBreakpointGroup().border?.line;
+			this.miDebugger.getStack(0, 1, this.recentStopThreadID).then(v=>{
+				filepath = v[0].file;
+				lineNumber = v[0].line;
+
+				 if (userToKernelBorders) {
+					for (const border of userToKernelBorders) {
+					if (filepath === border.filepath && lineNumber === border.line) {
+					 this.OSStateTransition(new OSEvent(OSEvents.AT_USER_TO_KERNEL_BORDER));
+					 break;
+				 }
+				}
+			 } 
+			 });
+			
+		}
+```
+在launch.json里面只指定边界断点，没有指定边界断点所属的断点组。边界断点所属的断点组是由调试器自己去判定的。所以当触发了多个断点组中的一个，
+调试器就会判定这个边界断点属于某某断点组，然后进行断点组切换的流程。
+
+
+正确的配置文件如下：
+```
+{
+    "version": "0.2.0",
+    "configurations": [      
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "Attach to Qemu",
+            "autorun": ["add-symbol-file ${workspaceFolder}/kernel/kernel"],
+            "target": ":1234",
+            "remote": true,
+            "cwd": "/home/kaining/xv6-riscv",
+            "valuesFormatting": "parseText",
+            "gdbpath": "${workspaceFolder}/riscv64-unknown-elf-gdb-rust.sh",
+            "showDevDebugOutput":true,
+            "internalConsoleOptions": "openOnSessionStart",
+            "printCalls": true,
+            "stopAtConnect": true,
+            //"debugServer": 4711,
+            "qemuPath": "qemu-system-riscv64",
+            "qemuArgs": [
+                "-machine", "virt", "-bios", "none",
+                "-kernel", "${workspaceFolder}/kernel/kernel",
+                "-m", "128M", "-smp", "2", "-nographic",
+                "-global", "virtio-mmio.force-legacy=false",
+                "-drive", "file=${workspaceFolder}/fs.img,if=none,format=raw,id=x0",
+                "-device", "virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0",
+                
+                "-s", "-S"
+            ],
+            "program_counter_id": 32,
+            "first_breakpoint_group": "kernel",
+            "second_breakpoint_group":"${workspaceFolder}/user/init.c",
+            "kernel_memory_ranges":[["0x80000000","0xffffffffffffffff"]],
+            "user_memory_ranges":[["0x0000000000000000","0x80000000"]],
+            "border_breakpoints":[
+                {
+                    "filepath": "${workspaceFolder}/user/usys.S",
+                    "line":6
+                },
+                {
+                    "filepath": "${workspaceFolder}/user/usys.S",
+                    "line":11
+                },
+                {
+                    "filepath": "${workspaceFolder}/user/usys.S",
+                    "line":16
+                },
+                {
+                    "filepath": "${workspaceFolder}/user/usys.S",
+                    "line":21
+                },
+                {
+                    "filepath": "${workspaceFolder}/user/usys.S",
+                    "line":26
+                },
+                {
+                    "filepath": "${workspaceFolder}/user/usys.S",
+                    "line":31
+                },
+                {
+                    "filepath": "${workspaceFolder}/user/usys.S",
+                    "line":36
+                },
+                {
+                    "filepath": "${workspaceFolder}/user/usys.S",
+                    "line":41
+                },
+                {
+                    "filepath": "${workspaceFolder}/user/usys.S",
+                    "line":46
+                },
+                {
+                    "filepath": "${workspaceFolder}/user/usys.S",
+                    "line":51
+                },
+                {
+                    "filepath": "${workspaceFolder}/user/usys.S",
+                    "line":56
+                },
+                {
+                    "filepath": "${workspaceFolder}/user/usys.S",
+                    "line":61
+                },
+                {
+                    "filepath": "${workspaceFolder}/user/usys.S",
+                    "line":66
+                },
+                {
+                    "filepath": "${workspaceFolder}/user/usys.S",
+                    "line":71
+                },{
+                    "filepath": "${workspaceFolder}/user/usys.S",
+                    "line":76
+                },
+                {
+                    "filepath": "${workspaceFolder}/user/usys.S",
+                    "line":81
+                },
+                {
+                    "filepath": "${workspaceFolder}/user/usys.S",
+                    "line":86
+                },
+                {
+                    "filepath": "${workspaceFolder}/user/usys.S",
+                    "line":91
+                },
+                {
+                    "filepath": "${workspaceFolder}/user/usys.S",
+                    "line":96
+                },
+                {
+                    "filepath": "${workspaceFolder}/user/usys.S",
+                    "line":101
+                },
+                {
+                    "filepath": "${workspaceFolder}/user/usys.S",
+                    "line":106
+                },
+                {
+                    "filepath": "${workspaceFolder}/kernel/trap.c",
+                    "line":129
+                }
+            ],
+            "hook_breakpoints":[
+                {
+                    "breakpoint": {
+                        "file": "${workspaceFolder}/kernel/sysfile.c",
+                        "line": 464
+                    },
+                    "behavior": {
+                        "isAsync": true,
+                        "functionArguments": "",
+                        "functionBody": "let p=await this.getStringVariable('path'); return '${workspaceFolder}/user/'+p+'.c' "
+                    }
+                }
+            ],
+           "filePathToBreakpointGroupNames": {
+                "isAsync": false,
+                "functionArguments": "filePathStr",
+                "functionBody": "if (filePathStr.includes('kernel')) { return ['kernel']; } else if (filePathStr === '${workspaceFolder}/user/usys.S') { return ['${workspaceFolder}/user/ln.c', '${workspaceFolder}/user/ls.c', '${workspaceFolder}/user/rm.c', '${workspaceFolder}/user/sh.c', '${workspaceFolder}/user/wc.c', '${workspaceFolder}/user/cat.c', '${workspaceFolder}/user/echo.c', '${workspaceFolder}/user/grep.c', '${workspaceFolder}/user/init.c', '${workspaceFolder}/user/kill.c', '${workspaceFolder}/user/ulib.c', '${workspaceFolder}/user/grind.c', '${workspaceFolder}/user/mkdir.c', '${workspaceFolder}/user/printf.c', '${workspaceFolder}/user/zombie.c', '${workspaceFolder}/user/umalloc.c', '${workspaceFolder}/user/forktest.c', '${workspaceFolder}/user/stressfs.c', '${workspaceFolder}/user/usertests.c']; } else if (filePathStr.includes('user') && filePathStr !== '${workspaceFolder}/user/usys.S') { return [filePathStr]; } else { return ['kernel']; }"
+            },
+            "breakpointGroupNameToDebugFilePath":{
+                "isAsync": false,
+                "functionArguments": "groupName",
+                "functionBody": "if (groupName === 'kernel') {        return '${workspaceFolder}/kernel/kernel';    }    else {        let pathSplited = groupName.split('/');            let filename = pathSplited[pathSplited.length - 1].split('.');         let filenameWithoutExtension = filename[filename.length - 2];        return '${workspaceFolder}/user/' + '_' + filenameWithoutExtension;    }"
+            }
+        },
+    ],
+}
+```
 
