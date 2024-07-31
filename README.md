@@ -21,42 +21,35 @@
 └── README.md                   # 项目说明文档
 
 ```
-## 2023年8月之前的工作（由去年参赛队伍 trap_handler 完成）
-
-构建了一款支持Rust操作系统内核开发的源代码级调试工具，该工具具备如下特征   
-(1)基于QEMU和GDB，支持跨内核态和用户态的源代码跟踪调试;  
-(2)基于eBPF，支持开发板上跨内核态和用户态的性能分析检测;  
-(3)基于VScode构建了远程开发环境，支持断点调试与性能检测的功能结合。
-
 
 # 2023年9月-2024年8月
-- 详细提交 请查看我们管理的[github仓库](https://github.com/chenzhiy2001/code-debug)     
 - 调试器的[安装文档](https://gitlab.eduxiji.net/T202410011992734/project2210132-235708/-/blob/master/installation%20and%20usage/%E5%AE%89%E8%A3%85%E8%AF%B4%E6%98%8E%E6%96%87%E6%A1%A3.md)    
 - 调试器的[演示视频](https://gitlab.eduxiji.net/T202410011992734/project2210132-235708/-/blob/master/docs/%E6%BC%94%E7%A4%BA%E8%A7%86%E9%A2%91.mp4) 
 
 #### 工作概要：
 + 初赛（已完成）
-	- **2023比赛内容仍可改进**
-	1. 调试器自动设置的断点不会在 VSCode 里面显示出来
+    - **2023比赛内容仍可改进**
+        1. 调试器自动设置的断点不会在 VSCode 里面显示出来
 	2. 若内核的出入口断点均在内核的符号表里，在用户态运行时内核的符号表已经卸载，无法触发边界断点回到内核态。
 	3. 代码实现很麻烦且难以维护
 	4. mibase.ts 中无法使用 console.log
 	5. 在没有跳板页，且是双页表的 OS 的情况下， continue不能跳转到断点
 
-	- **完善上述问题**
-		- [解决由调试器自动设置的断点不会在 VSCode 里面显示出来的问题](#完善1)
-	    - [完善边界断点](#完善2)
-	    - [将断点组功能改造为状态机](#完善3)
-	    - [添加 showInformationMessage 函数](#完善4)
-	    - [改善有的情况continue不能跳转到断点的情况](#完善5)
-        - [提升 Debug Console 输出内容的可读性](#完善6)
-        - [修改插件本身的编译配置文件 tsconfig.json](#完善7) 
-        - [修改launch.json 文件](#完善8)
+    - **完善上述问题**
+         - [解决由调试器自动设置的断点不会在 VSCode 里面显示出来的问题](#完善1)
+         - [完善边界断点](#完善2)
+         - [将断点组功能改造为状态机](#完善3)
+         - [添加 showInformationMessage 函数](#完善4)
+         - [改善有的情况continue不能跳转到断点的情况](#完善5)
+         - [提升 Debug Console 输出内容的可读性](#完善6)
+         - [修改插件本身的编译配置文件 tsconfig.json](#完善7)
+         - [修改launch.json 文件](#完善8)
 
-	- **新增功能**
-	    - [增加通过SSH进行OS调试的功能](#新1) 
-		- [通过右键菜单添加/取消边界断点](#新2)
+    - **新增功能**
+        - [增加通过SSH进行OS调试的功能](#新1)
+        - [通过右键菜单添加/取消边界断点](#新2)
         - [实现单步步进](#新3)
+        - [自动编译脚本](#新4)
 
 		
 		
@@ -64,7 +57,7 @@
 + 决赛
 	+ 第一阶段(已完成)
 		- **将调试器适配其他操作系统**    
-		 [让调试器适配xv6](#新4)     
+		 [让调试器适配xv6](#移植)     
 	
 	+ 第二阶段
 		- **结合硬件**
@@ -894,11 +887,6 @@ onOutput(str: string) {
 通过这些方法，代码确保了调试控制台输出的可读性和有用性，使得开发者能够更容易地理解调试过程中发生的事情，这对于调试复杂的应用程序或在开发过程中解决问题至关重要。
 
 
-- 测试、完善自动安装脚本
-    - [自动安装脚本](https://github.com/chenzhiy2001/code-debug/blob/master/%E5%AE%89%E8%A3%85%E4%B8%8E%E4%BD%BF%E7%94%A8/test.sh)
-
-
-- 提供帮助文档和帮助视频  
 
 <span id="完善7"></span>
 ### 7. 修改插件本身的编译配置文件 tsconfig.json  
@@ -1183,13 +1171,19 @@ step(reverse: boolean = false): Thenable<boolean> {
 ```
 
 <span id="新4"></span>
-### 4. 适配xv6
-#### xv6-riscv
+#### 4. 自动安装脚本
+- 测试、完善自动安装脚本
+    - [自动安装脚本](https://github.com/chenzhiy2001/code-debug/blob/master/%E5%AE%89%E8%A3%85%E4%B8%8E%E4%BD%BF%E7%94%A8/test.sh)
+- 提供帮助文档和帮助视频  
+
+<span id="移植"></span>
+## 适配xv6
+### 1. xv6-riscv
 
 xv6-riscv 是一个小型的 Unix 第六版操作系统实现，包含了基本的操作系统功能，如进程管理、内存管理、文件系统、设备驱动和系统调用。
 xv6-riscv 采用单内核结构，所有的操作系统服务都在内核模式下运行。内核代码包括内存管理、进程管理、文件系统、驱动程序和系统调用接口等部分。
 
-#### 更新package.json
+### 2. 更新package.json
 由于之前的调试器是仅rust语言可见的，我们修改了 package.json 文件，让它能够适配所有语言。
 ```
 "menus": {
@@ -1218,9 +1212,9 @@ xv6-riscv 采用单内核结构，所有的操作系统服务都在内核模式�
         }
 ```
 
-#### 编写launch.json
+### 3. 编写launch.json
 
-+  xv6 的qemu启动参数
+####  xv6 的qemu启动参数
 一开始我们沿用了了ebpf的部分参数，发现会导致启动不了，最后阅读了官方文档，找到了推荐的启动参数。
     ```
     "qemuPath": "qemu-system-riscv64",
@@ -1236,7 +1230,7 @@ xv6-riscv 采用单内核结构，所有的操作系统服务都在内核模式�
                 ],
     ```
 
-+ 调试调试器    
+#### 调试调试器    
 初步编写配置文件后发现只能从内核态转换到用户态，不能从用户态回到内核态，排查原因无果后我们决定**调试调试器**来进一步排查原因。
 
     + 调试器的构成及调试  
@@ -1248,7 +1242,7 @@ xv6-riscv 采用单内核结构，所有的操作系统服务都在内核模式�
     里面有一个4711的端口号，启动这个配置以后，会监听这个端口号。
     在我们要调试的项目中，添加一个``` "debugServer": 4711,```的配置，使两者可以传递信息。
 
-+ 获取断点组名称及路径  
+#### 获取断点组名称及路径  
 经过调试排查，我们发现不能从用户态回到内核态的原因之一是调试器没有成功读取用户态的符号表。xv6的用户文件经过编译后为_+文件名，做出如下修改：
     ```
     "filePathToBreakpointGroupNames": {
@@ -1263,7 +1257,7 @@ xv6-riscv 采用单内核结构，所有的操作系统服务都在内核模式�
                 }
         
     ```
-+ xv6 内核态和用户态转换的边界  
+#### xv6 内核态和用户态转换的边界  
 不能从用户态回到内核态还有一个原因是用户态的边界未被正确设置。
     + kernel/syscall.c是负责处理已经进到内核之后的syscall处理流程。我们需要的是用户态的syscall接口，在usys.S中。
     + 因为usys.S文件中有多个ecall，也就是说**用户态有多个边界断点**（因为xv6在用户态没有一个专门的syscall()处理函数，而是每个syscall的调用单独处理）。我们的调试器一开始是基于ebpf写的，所以用户和内核的边界都只有一个，添加新的边界断点时旧的会被替换掉。所以需要将边界改成数组，并**修改调试器的边界代码及相关处理函数**。   
@@ -1356,7 +1350,7 @@ xv6-riscv 采用单内核结构，所有的操作系统服务都在内核模式�
 在launch.json里面只指定边界断点，没有指定边界断点所属的断点组。边界断点所属的断点组是由调试器自己去判定的。所以当触发了多个断点组中的一个，
 调试器就会判定这个边界断点属于某某断点组，然后进行断点组切换的流程。
 
-+ 钩子断点
+#### 钩子断点
 完成以上修改之后，用户态和内核态已经可以正常切换了。但是经过几次切换后，调试器会自己中断。是因为我们之前将钩子断点设在了第6行，此时获取下一进程名时返回为空。
 ```
 // sysfile.c
@@ -1373,155 +1367,4 @@ xv6-riscv 采用单内核结构，所有的操作系统服务都在内核模式�
 ```
 修改后将钩子断点设置在了``` int ret = exec(path, argv);```这里，可以正常返回下一进程名，至此，调试器可以正确调试xv6。
 
-正确的配置文件如下：
-```
-{
-    "version": "0.2.0",
-    "configurations": [      
-        {
-            "type": "gdb",
-            "request": "attach",
-            "name": "Attach to Qemu",
-            "autorun": ["add-symbol-file ${workspaceFolder}/kernel/kernel"],
-            "target": ":1234",
-            "remote": true,
-            "cwd": "/home/kaining/xv6-riscv",
-            "valuesFormatting": "parseText",
-            "gdbpath": "${workspaceFolder}/riscv64-unknown-elf-gdb-rust.sh",
-            "showDevDebugOutput":true,
-            "internalConsoleOptions": "openOnSessionStart",
-            "printCalls": true,
-            "stopAtConnect": true,
-            //"debugServer": 4711,
-            "qemuPath": "qemu-system-riscv64",
-            "qemuArgs": [
-                "-machine", "virt", "-bios", "none",
-                "-kernel", "${workspaceFolder}/kernel/kernel",
-                "-m", "128M", "-smp", "2", "-nographic",
-                "-global", "virtio-mmio.force-legacy=false",
-                "-drive", "file=${workspaceFolder}/fs.img,if=none,format=raw,id=x0",
-                "-device", "virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0",
-                
-                "-s", "-S"
-            ],
-            "program_counter_id": 32,
-            "first_breakpoint_group": "kernel",
-            "second_breakpoint_group":"${workspaceFolder}/user/init.c",
-            "kernel_memory_ranges":[["0x80000000","0xffffffffffffffff"]],
-            "user_memory_ranges":[["0x0000000000000000","0x80000000"]],
-            "border_breakpoints":[
-                {
-                    "filepath": "${workspaceFolder}/user/usys.S",
-                    "line":6
-                },
-                {
-                    "filepath": "${workspaceFolder}/user/usys.S",
-                    "line":11
-                },
-                {
-                    "filepath": "${workspaceFolder}/user/usys.S",
-                    "line":16
-                },
-                {
-                    "filepath": "${workspaceFolder}/user/usys.S",
-                    "line":21
-                },
-                {
-                    "filepath": "${workspaceFolder}/user/usys.S",
-                    "line":26
-                },
-                {
-                    "filepath": "${workspaceFolder}/user/usys.S",
-                    "line":31
-                },
-                {
-                    "filepath": "${workspaceFolder}/user/usys.S",
-                    "line":36
-                },
-                {
-                    "filepath": "${workspaceFolder}/user/usys.S",
-                    "line":41
-                },
-                {
-                    "filepath": "${workspaceFolder}/user/usys.S",
-                    "line":46
-                },
-                {
-                    "filepath": "${workspaceFolder}/user/usys.S",
-                    "line":51
-                },
-                {
-                    "filepath": "${workspaceFolder}/user/usys.S",
-                    "line":56
-                },
-                {
-                    "filepath": "${workspaceFolder}/user/usys.S",
-                    "line":61
-                },
-                {
-                    "filepath": "${workspaceFolder}/user/usys.S",
-                    "line":66
-                },
-                {
-                    "filepath": "${workspaceFolder}/user/usys.S",
-                    "line":71
-                },{
-                    "filepath": "${workspaceFolder}/user/usys.S",
-                    "line":76
-                },
-                {
-                    "filepath": "${workspaceFolder}/user/usys.S",
-                    "line":81
-                },
-                {
-                    "filepath": "${workspaceFolder}/user/usys.S",
-                    "line":86
-                },
-                {
-                    "filepath": "${workspaceFolder}/user/usys.S",
-                    "line":91
-                },
-                {
-                    "filepath": "${workspaceFolder}/user/usys.S",
-                    "line":96
-                },
-                {
-                    "filepath": "${workspaceFolder}/user/usys.S",
-                    "line":101
-                },
-                {
-                    "filepath": "${workspaceFolder}/user/usys.S",
-                    "line":106
-                },
-                {
-                    "filepath": "${workspaceFolder}/kernel/trap.c",
-                    "line":129
-                }
-            ],
-            "hook_breakpoints":[
-                {
-                    "breakpoint": {
-                        "file": "${workspaceFolder}/kernel/sysfile.c",
-                        "line": 464
-                    },
-                    "behavior": {
-                        "isAsync": true,
-                        "functionArguments": "",
-                        "functionBody": "let p=await this.getStringVariable('path'); return '${workspaceFolder}/user/'+p+'.c' "
-                    }
-                }
-            ],
-           "filePathToBreakpointGroupNames": {
-                "isAsync": false,
-                "functionArguments": "filePathStr",
-                "functionBody": "if (filePathStr.includes('kernel')) { return ['kernel']; } else if (filePathStr === '${workspaceFolder}/user/usys.S') { return ['${workspaceFolder}/user/ln.c', '${workspaceFolder}/user/ls.c', '${workspaceFolder}/user/rm.c', '${workspaceFolder}/user/sh.c', '${workspaceFolder}/user/wc.c', '${workspaceFolder}/user/cat.c', '${workspaceFolder}/user/echo.c', '${workspaceFolder}/user/grep.c', '${workspaceFolder}/user/init.c', '${workspaceFolder}/user/kill.c', '${workspaceFolder}/user/ulib.c', '${workspaceFolder}/user/grind.c', '${workspaceFolder}/user/mkdir.c', '${workspaceFolder}/user/printf.c', '${workspaceFolder}/user/zombie.c', '${workspaceFolder}/user/umalloc.c', '${workspaceFolder}/user/forktest.c', '${workspaceFolder}/user/stressfs.c', '${workspaceFolder}/user/usertests.c']; } else if (filePathStr.includes('user') && filePathStr !== '${workspaceFolder}/user/usys.S') { return [filePathStr]; } else { return ['kernel']; }"
-            },
-            "breakpointGroupNameToDebugFilePath":{
-                "isAsync": false,
-                "functionArguments": "groupName",
-                "functionBody": "if (groupName === 'kernel') {        return '${workspaceFolder}/kernel/kernel';    }    else {        let pathSplited = groupName.split('/');            let filename = pathSplited[pathSplited.length - 1].split('.');         let filenameWithoutExtension = filename[filename.length - 2];        return '${workspaceFolder}/user/' + '_' + filenameWithoutExtension;    }"
-            }
-        },
-    ],
-}
-```
+[正确的配置文件](https://github.com/chenzhiy2001/code-debug/blob/master/installation%20and%20usage/xv6_launch.json)
