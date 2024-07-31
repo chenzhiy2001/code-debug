@@ -1172,9 +1172,9 @@ step(reverse: boolean = false): Thenable<boolean> {
 
 <span id="新4"></span>
 #### 4. 自动安装脚本
-- 测试、完善自动安装脚本
-    - [自动安装脚本](https://github.com/chenzhiy2001/code-debug/blob/master/%E5%AE%89%E8%A3%85%E4%B8%8E%E4%BD%BF%E7%94%A8/test.sh)
-- 提供帮助文档和帮助视频  
+由于调试器及ebpf所需工具和库非常多，而且依赖关系非常复杂，为了减少人为错误、提高可移植性、简化复杂构建过程，我们决定编写一个自动化安装脚本来提高效率。
+- [自动安装脚本](https://github.com/chenzhiy2001/code-debug/blob/master/%E5%AE%89%E8%A3%85%E4%B8%8E%E4%BD%BF%E7%94%A8/test.sh)
+经过测试和完善，此脚本可以正确安装调试所需要的工具和库（在网络良好的情况下）。
 
 <span id="移植"></span>
 ## 适配xv6
