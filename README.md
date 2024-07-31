@@ -1216,7 +1216,7 @@ xv6-riscv 采用单内核结构，所有的操作系统服务都在内核模式�
 
 ####  xv6 的qemu启动参数
 一开始我们沿用了了ebpf的部分参数，发现会导致启动不了，最后阅读了官方文档，找到了推荐的启动参数。
-    ```
+ ```
     "qemuPath": "qemu-system-riscv64",
                 "qemuArgs": [
                     "-machine", "virt", "-bios", "none",
@@ -1228,7 +1228,7 @@ xv6-riscv 采用单内核结构，所有的操作系统服务都在内核模式�
                     
                     "-s", "-S"
                 ],
-    ```
+```
 
 #### 调试调试器    
 初步编写配置文件后发现只能从内核态转换到用户态，不能从用户态回到内核态，排查原因无果后我们决定**调试调试器**来进一步排查原因。
@@ -1244,7 +1244,7 @@ xv6-riscv 采用单内核结构，所有的操作系统服务都在内核模式�
 
 #### 获取断点组名称及路径  
 经过调试排查，我们发现不能从用户态回到内核态的原因之一是调试器没有成功读取用户态的符号表。xv6的用户文件经过编译后为_+文件名，做出如下修改：
-    ```
+```
     "filePathToBreakpointGroupNames": {
                     "isAsync": false,
                     "functionArguments": "filePathStr",
@@ -1256,13 +1256,13 @@ xv6-riscv 采用单内核结构，所有的操作系统服务都在内核模式�
                     "functionBody": "if (groupName === 'kernel') {        return '${workspaceFolder}/kernel/kernel';    }    else {        let pathSplited = groupName.split('/');            let filename = pathSplited[pathSplited.length - 1].split('.');         let filenameWithoutExtension = filename[filename.length - 2];        return '${workspaceFolder}/user/' + '_' + filenameWithoutExtension;    }"
                 }
         
-    ```
+```
 #### xv6 内核态和用户态转换的边界  
 不能从用户态回到内核态还有一个原因是用户态的边界未被正确设置。
     + kernel/syscall.c是负责处理已经进到内核之后的syscall处理流程。我们需要的是用户态的syscall接口，在usys.S中。
     + 因为usys.S文件中有多个ecall，也就是说**用户态有多个边界断点**（因为xv6在用户态没有一个专门的syscall()处理函数，而是每个syscall的调用单独处理）。我们的调试器一开始是基于ebpf写的，所以用户和内核的边界都只有一个，添加新的边界断点时旧的会被替换掉。所以需要将边界改成数组，并**修改调试器的边界代码及相关处理函数**。   
         
-        ```
+```
         export class Border  {
             filepath:string;
             line:number;
@@ -1346,7 +1346,7 @@ xv6-riscv 采用单内核结构，所有的操作系统服务都在内核模式�
                     });
                     
                 }
-        ```
+```
 在launch.json里面只指定边界断点，没有指定边界断点所属的断点组。边界断点所属的断点组是由调试器自己去判定的。所以当触发了多个断点组中的一个，
 调试器就会判定这个边界断点属于某某断点组，然后进行断点组切换的流程。
 
