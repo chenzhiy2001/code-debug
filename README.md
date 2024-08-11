@@ -26,46 +26,116 @@
 - 调试器的[安装文档](https://gitlab.eduxiji.net/T202410011992734/project2210132-235708/-/blob/master/installation%20and%20usage/%E5%AE%89%E8%A3%85%E8%AF%B4%E6%98%8E%E6%96%87%E6%A1%A3.md)    
 - 调试器的[演示视频](https://gitlab.eduxiji.net/T202410011992734/project2210132-235708/-/blob/master/docs/%E6%BC%94%E7%A4%BA%E8%A7%86%E9%A2%91.mp4) 
 
-#### 工作概要：
-+ 初赛（已完成）
-    - **2023比赛内容仍可改进**
-        1. 调试器自动设置的断点不会在 VSCode 里面显示出来
-	2. 若内核的出入口断点均在内核的符号表里，在用户态运行时内核的符号表已经卸载，无法触发边界断点回到内核态。
-	3. 代码实现很麻烦且难以维护
-	4. mibase.ts 中无法使用 console.log
-	5. 在没有跳板页，且是双页表的 OS 的情况下， continue不能跳转到断点
+#### 目录：
+[第一部分 项目概要](#概要)  
+1. [项目背景](#概要1)  
+2. [调试工具框架结构](#概要2)  
+3. [调试工具功能说明与使用方式介绍](#概要3)  
+3.1 [功能说明](#概要3.1)  
+3.2 [安装与使用](#概要3.2)  
+3.2.1 [安装](#概要3.2.1)  
+3.2.2 [使用](#概要3.2.2)  
+4. [工作概要](#概要4)  
+4.1 [对去年调试器的完善](#概要4.1)  
+4.2 [对可支持调试的操作系统进行语言及运行环境扩充](#概要4.2)
+   
+[第二部分 完善调试器](#完善调试器)  
+1. [功能完善](#完善)    
+1.1 [解决由调试器自动设置的断点不会在 VSCode 里面显示出来的问题](#完善1)  
+1.2 [完善边界断点](#完善2)  
+1.3 [将断点组功能改造为状态机](#完善3)    
+1.4 [添加 showInformationMessage 函数](#完善4)    
+1.5 [改善有的情况continue不能跳转到断点的情况](#完善5)  
+1.6 [提升 Debug Console 输出内容的可读性](#完善6)  
+1.7 [修改插件本身的编译配置文件 tsconfig.json](#完善7)  
+1.8 [修改launch.json 文件](#完善8)  
+2. [新增功能](#新增功能4)    
+2.1 [增加通过SSH进行OS调试的功能](#新1)  
+2.2 [通过右键菜单添加/取消边界断点](#新2)  
+2.3 [实现单步步进](#新3)  
+2.4 [自动编译脚本](#新4)  
+2.5 [调试调试器](#新5)  
 
-    - **完善上述问题**
-         - [解决由调试器自动设置的断点不会在 VSCode 里面显示出来的问题](#完善1)
-         - [完善边界断点](#完善2)
-         - [将断点组功能改造为状态机](#完善3)
-         - [添加 showInformationMessage 函数](#完善4)
-         - [改善有的情况continue不能跳转到断点的情况](#完善5)
-         - [提升 Debug Console 输出内容的可读性](#完善6)
-         - [修改插件本身的编译配置文件 tsconfig.json](#完善7)
-         - [修改launch.json 文件](#完善8)
+[第三部分 对可支持调试的操作系统进行语言及运行环境扩充](#扩充)  
+1. [支持xv6(C语言)的调试](#移植)      
+1.1 [更新package.json](#移植1)    
+1.2 [编写launch.json](#移植2)   
+1.2.1 [xv6的qemu启动参数](#移植2.1)   
+1.2.2 [获取断点组名称及路径](#移植2.2)   
+1.2.3 [xv6内核态和用户态转换的边界](#移植2.3)   
+1.2.4 [修改钩子断点](#移植2.4)   
+1.3 [正确的配置文件](#移植3) 
 
-    - **新增功能**
-        - [增加通过SSH进行OS调试的功能](#新1)
-        - [通过右键菜单添加/取消边界断点](#新2)
-        - [实现单步步进](#新3)
-        - [自动编译脚本](#新4)
+<span id="概要"></span>
+## 第一部分 项目概要
+code-debug是一款同时支持Rust语言和C语言操作系统内核开发的源代码级调试工具，该工具基于QEMU和GDB，支持跨内核态和用户态的源代码跟踪调试；基于eBPF支持开发板上跨内核态和用户态的性能分析检测；基于VScode构建了远程开发环境，支持断点调试与性能检测的功能结合。
 
-		
-		
+<span id="概要1"></span>
+### 项目背景
+内核代码的调试难度大通常是阻碍开发人员进行操作系统功能开发的重要因素。由于操作系统内核代码复杂，静态分析、动态分析都具有相当的难度，包括特权级切换，进程调度，页表管理等。已有的集成
+开发环境通常面向应用程序的开发，对操作系统代码特别是新兴的Rust操作系统代码开发调试暂未提供
+良好的支持。如何提供方便、高效且可跨特权级跟踪的操作系统调试工具是待解决的关键问题。为了解
+决该问题，本工作将GDB与eBPF结合，通过远程访问的形式，提供方便的Qemu与实际硬件环境的Rust
+操作系统的开发与调试。实现用户态、内核态代码的静态断点调试与动态跟踪调试结合，提供了基于
+VSCode插件的用户交互界面。
+我们主要解决以下三个关键问题：
 
-+ 决赛
-	+ 第一阶段(已完成)
-		- **将调试器适配其他操作系统**    
-		 [让调试器适配xv6](#移植)     
-	
-	+ 第二阶段
-		- **结合硬件**
+(1) 支持基于GDB的内核态，用户态代码联合断点调试；
 
-#### 详细工作总结如下所示
+(2) 基于eBPF的内核态，用户态代码的动态跟踪调试；
 
-## 对2023内容的完善：
+(3) 远程开发环境下的用户界面（集成开发环境）支持与qemu，实际硬件的支持。
 
+
+在去年的操作系统功能赛道中，已经实现了（1）（2）功能。在今年的工作中，我们在上述基础上进一步完善，修复了去年调试器存在的问题，进行代码重构并新增部分功能，具体请见第二部分内容。除此之外，我们进行了被操作系统语言（C语言）扩充以及运行环境扩充，具体请见第三部分内容。
+
+<span id="概要2"></span>
+### 调试工具框架结构
+
+我们沿用了去年的思路，对下通过 GDB/MI 接口控制GDB，对上通过 DAP 协议和 VSCode 调试界面进行交互在Debug Adapter中实现”断点组切换“。其核心的原理是，将用户设置的GDB断点按断点所在的地址空间分为若干组，在任意时刻下，只有当前地址空间对应的断点组是生效的。如果调试器检测到地址空间发生了切换，就会令 GDB 立即切换到切换后的地址空间对应的断点组和符号表，从而使得在任意时刻下，GDB 都只设置当前运行的指令所在的地址空间的断点，这样就避免了断点失效的问题，保证了用户设置的用户态，内核态的断点均可生效。
+![image](https://github.com/user-attachments/assets/11348b53-806e-4cee-83be-b788cd9565aa)
+基于Debug Adapter的调试架构
+
+<span id="概要3"></span>
+### 调试工具功能说明与使用方式介绍
+<span id="概要3.1"></span>
+#### 功能说明
+code-debug的功能包括断点设置、单步执行、监视窗口、日志记录、内存检查、条件断点、异常捕获和图形化调试界面。断点设置允许开发者在代码的特定行暂停执行，以检查程序状态；单步执行则可以逐行执行代码，详细观察每一步的执行过程；监视窗口实时查看特定变量的值；日志记录保存程序执行过程中的关键信息；条件断点仅在满足特定条件时触发，避免不必要的暂停；异常捕获识别运行中的异常；图形化调试界面提供用户友好的操作界面，提高调试效率。通过这些功能的综合使用，帮助开发者更快速准确地定位和解决代码中的问题，显著提高开发效率。
+<span id="概要3.2"></span>
+#### 安装与使用
+<span id="概要3.2.1"></span>
+##### 安装
+[安装说明文档](https://gitlab.eduxiji.net/T202410011992734/project2210132-235708/-/blob/master/installation%20and%20usage/%E5%AE%89%E8%A3%85%E8%AF%B4%E6%98%8E%E6%96%87%E6%A1%A3.md)
+<span id="概要3.2.2"></span>
+##### 使用
++ 在code-debug文件夹下git pull更新软件仓库，确保代码是最新的，然后按F5运行插件，这时会打开一个新的VSCode窗口。 后续操作步骤均在新窗口内完成！
++ 在新窗口内，打开需要调试的项目，按照上面的提示配置launch.json并保存。
++ 按F5键，即可开始使用本插件。
++ 清除所有断点（Remove All Breakpoints 按钮）
++ 设置内核入口出口（Set Border Breakpoints 按钮）、钩子断点(Set hook breakpoints 按钮)
++ 设置内核代码和用户程序代码的断点
++ 按continue按钮开始调试
++ 当运行到位于内核出口或用户出口时，插件会自动切换到用户态或内核态的断点
+
+<span id="概要4"></span>
+### 工作概要
+我们的工作主要分为两大部分：
+<span id="概要4.1"></span>
+#### 对去年的调试器进行完善
++ 功能完善
+我们修复了去年调试器存在的问题：界断点的实现方式，使之成为断点租的一个属性，减去了不必要的麻烦；在原有基础上进行代码重构，并将断点组功能改造成状态机，简化复杂流程的管理，增强代码的灵活性、逻辑性和可读性；修改了launch.json，用户可以里提交自定义代码 launch.json 支持 workspacef older修改后的文件。
++ 新增功能
+我们新增加了ssh远程调试功能，让开发者可以在本地机器通过vscode远程调试，增强实用性和便捷性；实现单步步进，使可以逐步分析和理解代码的执行过程；我们还提供了调试调试器的方法，是开发者可以进一步排查问题所在。
+<span id="概要4.2"></span>
+#### 对可支持调试的操作系统进行语言及运行环境扩充
++ 语言扩充
+我们根据xv6的体系架构，修改了调试器的部分代码以适配其多边界和C语言的特性，并且编写了支持xv6调试的launch.json文件。
++ 环境扩充
+
+<span id="完善调试器"></span>
+# 第二部分 完善调试器
+<span id="完善"></span>
+## 功能完善
 <span id="完善1"></span>
 ### 1. 解决由调试器自动设置的断点不会在 VSCode 里面显示出来的问题
 + 在过去，由于VSCode没有提供“在VSCode中设置断点”的API，我们的插件无法模拟用户设置断点的操作。我们如果想要自动地设置断点，只能从Debug Adapter入手，让Debug Adapter知道断点设置了，然后再告诉GDB，但是VSCode是根本不知道这个断点存在的，因此不会显示出来。  
@@ -82,97 +152,92 @@
 我们之前把 isBorder 这个属性交给断点组管理模块去管理。因此，在 Debug Adapter 层面是先设置断点，再给断点添加“边界”属性的。（在 VSCode 的层面则不是）
 
 ```ts
-	vscode.debug.addBreakpoints([breakpoint]);//this will go through setBreakPointsRequest in mibase.ts
-	vscode.debug.activeDebugSession?.customRequest('setBreakpointAsBorder',args[0]);
-
+//this will go through setBreakPointsRequest in mibase.ts
+vscode.debug.addBreakpoints([breakpoint]);
+vscode.debug.activeDebugSession?.customRequest('setBreakpointAsBorder',args[0]);
 ```
+
 由于Debug Adapter 会对这些断点做很多的操作，把断点组和 Debug Adapter 本身的断点管理功能合为一体不是好事，怕会造成更多麻烦。
 之前在断点组里面直接存SetBreakpointArguments的策略没有问题，因为断点组管理模块的作用就是在合适的时机进行断点设置，而非存储某个断点。而且 SetBreakpointArguments 里面已经包含了断点所需要的所有信息。只不过我们要继承 SetBreakpointArguments，添加一个 isBorder 属性。然后通过 customRequest 对这个 isBorder 属性做更改，非常麻烦。
 
 我们现在不把边界的信息并存储在断点的数据结构里，而是存在断点组的数据结构里，这样就不用去查找到某个断点的数据结构，再将它改为“边界”。
 这样做还有一个好处，无需改动原有的断点数据结构（因为边界的信息不再存储在断点的数据结构中，而是存在断点组的属性中）。再增加一个“去除本地址空间的边界断点”功能，就同时实现了边界断点的更改。
 断点组切换的代码除了完全清空所有断点组信息（removeallclibreakpoint）的情况外，断点组本身是不会被删除的（断点组里面的断点可能会被删除）。因此我们把边界的信息附加在断点组上，做到了和之前代码的兼容，因此代码量小，现有的断点组切换的代码完全不需要更改。
-
 ```ts
-
-
-	//There is only 1 border per breakpoint group. So it you set border twice in a breakpoint group, the newer one will replace the older one.
-	const setBreakpointAsBorderCmd = vscode.commands.registerCommand('code-debug.setBreakpointAsBorder', (...args) => {
-		const uri = args[0].uri;
-		const fullpath = args[0].uri.fsPath; // fsPath provides the path in the form appropriate for the os.
-		const lineNumber = args[0].lineNumber;
-		// we set the line index to 0 since currently we don't want to deal with positions in a line
-		let breakpoint = new vscode.SourceBreakpoint(new vscode.Location(uri,new vscode.Position(lineNumber,0)),true);
-		vscode.debug.addBreakpoints([breakpoint]);//this will go through setBreakPointsRequest in mibase.ts
-		vscode.debug.activeDebugSession?.customRequest('setBorder',new Border(fullpath,lineNumber));
-	});
-
-	//customRequest=======
-
-				case 'setBorder':
-				// args have border type
-				this.breakpointGroups.updateBorder(args as Border);
-				break;
-
-	//====================
-
-	public updateBorder(border: Border) {
-		const result = eval(this.debugSession.filePathToBreakpointGroupNames)(border.filepath);
-		const groupNamesOfBorder:string[] = result;
-		for(const groupNameOfBorder of groupNamesOfBorder){
-			let groupExists = false;
-			for(const group of this.groups){
-				if(group.name === groupNameOfBorder){
-					groupExists = true;
-					group.border = border;
-				}
-			}
-			if(groupExists === false){
-				this.groups.push(new BreakpointGroup(groupNameOfBorder, [], new HookBreakpoints([]), border));
-			}
-		}
-	}
-
+    // 每个断点组只能有一个边界断点。因此，如果在同一个断点组中设置两次边界断点，
+    //新的边界断点会替换旧的
+    const setBreakpointAsBorderCmd = vscode.commands.registerCommand
+    ('code-debug.setBreakpointAsBorder', (...args) => {
+    const uri = args[0].uri;
+    const fullpath = args[0].uri.fsPath; // fsPath 提供了适用于操作系统的路径格式
+    const lineNumber = args[0].lineNumber;
+    // 我们将行索引设置为0，因为目前不需要处理行内的位置
+    let breakpoint = new vscode.SourceBreakpoint(new vscode.Location
+                        (uri,new vscode.Position(lineNumber,0)),true);
+    //这将会通过mibase.ts中的setBreakPointsRequest
+    vscode.debug.addBreakpoints([breakpoint]);
+    vscode.debug.activeDebugSession?.customRequest('setBorder',new 
+                                                Border(fullpath,lineNumber));
+});
 ```
-
-其中`filePathToSpaceName`函数是由用户在 launch.json 中提供的，因为 filepath=>SpaceName 的逻辑每个 OS都不一样。
-
-除此之外我们加了一个把边界断点改回普通断点的功能：
-
+此时设置边界的逻辑变得更加简单——接收一个包含边界信息的参数，并调用 updateBorder 方法更新断点组的边界。
 ```ts
+   //customRequest=======
+                case 'setBorder':
+                // args have border type
+                this.breakpointGroups.updateBorder(args as Border);
+                break;
+```
+更新边界断点:
 
-	const disableBorderOfThisBreakpointGroupCmd = vscode.commands.registerCommand('code-debug.disableBorderOfThisBreakpointGroup', (...args) => {
-		const uri = args[0].uri;
-		const fullpath = args[0].uri.fsPath; // fsPath provides the path in the form appropriate for the os.
-		const lineNumber = args[0].lineNumber;
-		vscode.debug.activeDebugSession?.customRequest('disableBorder', new Border(fullpath, lineNumber));
-	});
+根据给定文件路径的边界断点，更新/创建对应的断点组。首先通过 eval 执行函数 filePathToBreakpointGroupNames 获取与文件路径关联的断点组名称列表，然后遍历这些组名，检查每个组名是否存在于当前的断点组列表中。如果找到匹配的断点组，则更新其边界属性；如果未找到，则创建一个新的断点组并将其添加到列表中。确保每个文件路径的边界断点都能正确地归属到相应的断点组中。
+```ts
+  public updateBorder(border: Border) {
+        const result =
+        eval(this.debugSession.filePathToBreakpointGroupNames)(border.filepath);
+        const groupNamesOfBorder: string[] = result;
+        for (const groupNameOfBorder of groupNamesOfBorder) {
+            let groupExists = false;
+            for (const group of this.groups) {
+                if (group.name === groupNameOfBorder) {
+                    groupExists = true;
+                    // 注意：这里假设每个组只有一个 border，如果需要支持多个边界断点，
+                    应更改为 group.borders.push(border);
+                    group.border = border;
+                }
+            }
 
-
-	//customRequest=========
-
-				case 'disableBorder':
-				// args have border type
-				this.breakpointGroups.disableBorder(args);
-				break;
-
-	//=====================
-
-	public disableBorder(border: Border) {
-		const groupNamesOfBorder:string[] = eval(this.debugSession.filePathToBreakpointGroupNames)(border.filepath);
-		for(const groupNameOfBorder of groupNamesOfBorder){
-			let groupExists = false;
-			for(const group of this.groups){
-				if(group.name === groupNameOfBorder){
-					groupExists = true;
-					group.border = undefined;
-				}
-			}
-			if(groupExists === false){
-				//do nothing
-			}
-		}
-	}
+            // 如果没有找到匹配的断点组，则创建一个新的断点组并添加到列表中
+            if (groupExists === false) {
+                this.groups.push(new BreakpointGroup(
+                    groupNameOfBorder, 
+                    [], 
+                    new HookBreakpoints([]), 
+                    border // 注意：这里传入单个边界断点，如果需要支持多个边界断点，
+                    应更改为 [border]
+                ));
+            }
+        }
+    }
+```
+除此之外我们加了一个把边界断点改回普通断点的功能：
+```ts
+public disableBorder(border: Border) {
+    const groupNamesOfBorder:string[] = 
+                    eval(this.debugSession.filePathToBreakpointGroupNames)(border.filepath);
+    for(const groupNameOfBorder of groupNamesOfBorder){
+        let groupExists = false;
+        for(const group of this.groups){
+            if(group.name === groupNameOfBorder){
+                groupExists = true;
+                group.border = undefined;
+            }
+        }
+        if(groupExists === false){
+            //do nothing
+        }
+    }
+}
 ```
 如果没给边界的话就不会切换断点组，就在当前断点组一直运行下去。
 
@@ -217,13 +282,13 @@ enum DebuggerActions {
 的快捷指令）。  
 
 
-#### 添加“钩子断点”
-
 
 #### 改变状态触发事件  
+
 之前为了提供“停下”的信号，在四五个地方（断点触发，单步结束......）执行后发送“停下”的事件。
 但是我们发现，stopEvent 确实会在每次 OS 停下来时被创建，只处理一种停下来的情况，不包括因为断点而停下来的情况。所以只要在 stopevent 一个地方设 stop 的“钩子断点”即可。
-+ 钩子断点
++ 钩子断点  
+钩子断点允许在调试过程中的特定点执行额外的逻辑。HookBreakpoint 类存储了断点和与之关联的行为（behavior）。当调试器在该断点停止时，将执行定义的行为。
     ```ts
     // use this to get next process name
     class HookBreakpoint{
@@ -293,112 +358,99 @@ enum DebuggerActions {
     ```
     我们这个状态机的特别之处在于：一些 action 会导致 OSState 的变化。  
     特殊的情况全部出现在`doAction`方法中：
+    每个 else if 分支都对应一个动作类型。这些动作包括检查当前程序计数器（PC）的值以确定是否到达特定的内存地址区间、开始连续单步执行、获取下一个断点组名称、以及在不同层级的断点组之间进行切换。每个分支都以显示一条信息开始，然后根据动作类型执行相应的逻辑。例如，在检查是否到达内核态或用户态的分支中，首先获取程序计数器的值，然后根据地址区间判断当前是否处于期望的状态，并相应地触发状态机事件或执行单步指令。在尝试获取下一个断点组名称的分支中，遍历当前断点组的钩子断点，如果当前位置与钩子断点匹配，则执行钩子行为并更新下一个断点组名称。在断点组切换的分支中，根据当前状态更新当前断点组和下一个断点组的名称，以便在不同层级的断点组之间进行切换。
 
     ```ts
-        public doAction(action:Action){
-            if(action.type === DebuggerActions.check_if_kernel_yet){
-                this.showInformationMessage('doing action: check_if_kernel_yet');
-                this.miDebugger.getSomeRegisters([this.program_counter_id]).then(v => {
-                    const addr = parseInt(v[0].valueStr, 16);
-                    if(this.isKernelAddr(addr)){
-                        this.showInformationMessage('arrived at kernel. current addr:' + addr.toString(16));
-                        this.OSStateTransition(new OSEvent(OSEvents.AT_KERNEL));
-                    }else{
-                        this.miDebugger.stepInstruction();
-                    }
-                });
-            }
-            else if(action.type === DebuggerActions.check_if_user_yet){
-                this.showInformationMessage('doing action: check_if_user_yet');
-                this.miDebugger.getSomeRegisters([this.program_counter_id]).then(v => {
-                    const addr = parseInt(v[0].valueStr, 16);
-                    if(this.isUserAddr(addr)){
-                        this.showInformationMessage('arrived at user. current addr:' + addr.toString(16));
-                        this.OSStateTransition(new OSEvent(OSEvents.AT_USER));
-                    }else{
-                        this.miDebugger.stepInstruction();
-                    }
-                });
-            }
-            // obviously we are at kernel breakpoint group when executing this action
-            else if(action.type === DebuggerActions.check_if_kernel_to_user_border_yet){
-                this.showInformationMessage('doing action: check_if_kernel_to_user_border_yet');
-                let filepath:string = "";
-                let lineNumber:number = -1;
-                const kernelToUserBorderFile = this.breakpointGroups.getCurrentBreakpointGroup().border?.filepath;
-                const kernelToUserBorderLine = this.breakpointGroups.getCurrentBreakpointGroup().border?.line;
-                //todo if you are trying to do multi-core debugging, you might need to modify the 3rd argument.
-                this.miDebugger.getStack(0, 1, this.recentStopThreadID).then(v=>{
-                    filepath = v[0].file;
-                    lineNumber = v[0].line;
-                    if (filepath === kernelToUserBorderFile && lineNumber === kernelToUserBorderLine){
-                        this.OSStateTransition(new OSEvent(OSEvents.AT_KERNEL_TO_USER_BORDER));
-                    }
-                });
-            }
-            // obviously we are at current user breakpoint group when executing this action
-            else if(action.type === DebuggerActions.check_if_user_to_kernel_border_yet){
-                this.showInformationMessage('doing action: check_if_user_to_kernel_border_yet');
-                let filepath:string = "";
-                let lineNumber:number = -1;
-                const userToKernelBorderFile = this.breakpointGroups.getCurrentBreakpointGroup().border?.filepath;
-                const userToKernelBorderLine = this.breakpointGroups.getCurrentBreakpointGroup().border?.line;
-                //todo if you are trying to do multi-core debugging, you might need to modify the 3rd argument.
-                this.miDebugger.getStack(0, 1, this.recentStopThreadID).then(v=>{
-                    filepath = v[0].file;
-                    lineNumber = v[0].line;
-                    if (filepath === userToKernelBorderFile && lineNumber === userToKernelBorderLine){
-                        this.OSStateTransition(new OSEvent(OSEvents.AT_USER_TO_KERNEL_BORDER));
-                    }
-                });
-
-            }
-            else if(action.type === DebuggerActions.start_consecutive_single_steps){
-                this.showInformationMessage("doing action: start_consecutive_single_steps");
-                // after this single step finished, `STOPPED` event will trigger next single step according to the state machine
-                this.miDebugger.stepInstruction();
-            }
-            else if(action.type === DebuggerActions.try_get_next_breakpoint_group_name){
-                this.showInformationMessage('doing action: try_get_next_breakpoint_group_name');
-                let filepath:string = "";
-                let lineNumber:number = -1;
-                //todo if you are trying to do multi-core debugging, you might need to modify the 3rd argument.
-                this.miDebugger.getStack(0, 1, this.recentStopThreadID).then(v=>{
-                    filepath = v[0].file;
-                    lineNumber = v[0].line;
-                    //if `behavior()` has not been executed, `this.breakpointGroups.nextBreakpointGroup` stays the same.
-                    for(const hook of this.breakpointGroups.getCurrentBreakpointGroup().hooks){
-                        //todo since hook.behavior is async, it is possible that os jump to border before the hook finished, causing nextbreakpointgroup not updated properly.
-                        //in this extreme case, use `this.currentHook`.
-                        this.currentHook = hook;
-                        this.showInformationMessage('hook is ' + hook.behavior);
-                        if (filepath === hook.breakpoint.file && lineNumber === hook.breakpoint.line){
-                            eval(hook.behavior)().then((hookResult:string)=>{
-                                this.breakpointGroups.setNextBreakpointGroup(hookResult);
-                                this.currentHook = undefined;
-                                this.showInformationMessage('finished action: try_get_next_breakpoint_group_name.\nNext breakpoint group is ' + hookResult);
-                            });
+    // 检查是否到达内核态
+    public doAction(action: Action) {
+        if (action.type === DebuggerActions.check_if_kernel_yet) {
+            this.showInformationMessage('doing action: check_if_kernel_yet');
+            this.miDebugger.getSomeRegisters([this.program_counter_id]).then(v => {
+                const addr = parseInt(v[0].valueStr, 16);
+                if (this.isKernelAddr(addr)) {
+                    this.showInformationMessage('arrived at kernel. current addr:' + 
+                                                            addr.toString(16));
+                    this.OSStateTransition(new OSEvent(OSEvents.AT_KERNEL));
+                } else {
+                    this.miDebugger.stepInstruction();
                         }
-                    }
-                });
-
-            }
-            else if(action.type === DebuggerActions.high_level_switch_breakpoint_group_to_low_level){//for example, user to kernel
-                const high_level_breakpoint_group_name = this.breakpointGroups.getCurrentBreakpointGroupName();
-                this.breakpointGroups.updateCurrentBreakpointGroup(this.breakpointGroups.getNextBreakpointGroup());
-                this.breakpointGroups.setNextBreakpointGroup(high_level_breakpoint_group_name);// if a hook is triggered during low level execution, NextBreakpointGroup will be set to the return value of hook behavior function.
-            }
-            else if(action.type === DebuggerActions.low_level_switch_breakpoint_group_to_high_level){//for example, kernel to user
-                const low_level_breakpoint_group_name = this.breakpointGroups.getCurrentBreakpointGroupName();
-                const high_level_breakpoint_group_name = this.breakpointGroups.getNextBreakpointGroup();
-                this.breakpointGroups.updateCurrentBreakpointGroup(high_level_breakpoint_group_name);
-                this.breakpointGroups.setNextBreakpointGroup(low_level_breakpoint_group_name);
-            }
-
+            });
         }
-
+        else if (action.type === DebuggerActions.check_if_user_yet) {
+            this.showInformationMessage('doing action: check_if_user_yet');
+            this.miDebugger.getSomeRegisters([this.program_counter_id]).then(v => {
+                const addr = parseInt(v[0].valueStr, 16);
+                if (this.isUserAddr(addr)) {
+                    this.showInformationMessage('arrived at user. current addr:' + 
+                                                            addr.toString(16));
+                    this.OSStateTransition(new OSEvent(OSEvents.AT_USER));
+                } else {
+                    this.miDebugger.stepInstruction();
+                        }
+            });
+        }
+        // 检查是否到达从内核态到用户态的边界
+        else if (action.type === DebuggerActions.check_if_kernel_to_user_border_yet) {
+            this.showInformationMessage('doing action: check_if_kernel_to_user_border_yet');
+            const kernelToUserBorderFile = 
+                this.breakpointGroups.getCurrentBreakpointGroup().border?.filepath;
+            const kernelToUserBorderLine = 
+                this.breakpointGroups.getCurrentBreakpointGroup().border?.line;
+            this.miDebugger.getStack(0, 1, this.recentStopThreadID).then(v => {
+                let filepath = v[0].file;
+                let lineNumber = v[0].line;
+                if (filepath === kernelToUserBorderFile && lineNumber === 
+                                                            kernelToUserBorderLine) {
+                    this.OSStateTransition(new OSEvent(OSEvents.AT_KERNEL_TO_USER_BORDER));
+                }
+            });
+        }
+    ···
+    }
     ```
+    检查是否到达从用户态到内核态的边界与检查内核到用户边界类似，此处省略。
+    ```ts
+    // 开始连续单步执行
+    else if (action.type === DebuggerActions.start_consecutive_single_steps) {
+        this.showInformationMessage("doing action: start_consecutive_single_steps");
+        this.miDebugger.stepInstruction();
+    }
 
+    // 尝试获取下一个断点组名称
+    else if (action.type === DebuggerActions.try_get_next_breakpoint_group_name) {
+        this.showInformationMessage('doing action: try_get_next_breakpoint_group_name');
+        // 获取当前栈帧信息
+        this.miDebugger.getStack(0, 1, this.recentStopThreadID).then(v => {
+            let filepath = v[0].file;
+            let lineNumber = v[0].line;
+            // 遍历当前断点组的钩子断点
+            for (const hook of this.breakpointGroups.getCurrentBreakpointGroup().hooks) {
+                if (filepath === hook.breakpoint.file && lineNumber === 
+                                                    hook.breakpoint.line) {
+                    // 执行钩子行为，并更新下一个断点组名称
+                    eval(hook.behavior)().then((hookResult: string) => {
+                        this.breakpointGroups.setNextBreakpointGroup(hookResult);
+                        this.showInformationMessage('finished action: 
+                            try_get_next_breakpoint_group_name.\nNext breakpoint 
+                            group is ' + hookResult);
+                    });
+                }
+            }
+        });
+    }
+    // 从高层断点组切换到低层断点组
+    else if (action.type === 
+    DebuggerActions.high_level_switch_breakpoint_group_to_low_level) {
+            // 获取当前高层断点组名称，并更新为低层断点组
+            const high_level_breakpoint_group_name = 
+            this.breakpointGroups.getCurrentBreakpointGroupName();
+            this.breakpointGroups.updateCurrentBreakpointGroup(this.breakpointGroups.
+                                                        getNextBreakpointGroup());
+            // 设置下一个断点组为高层断点组，以便在低层执行完成后返回
+            this.breakpointGroups.setNextBreakpointGroup(high_level_
+                                                            breakpoint_group_name);
+        }
+    ```
 在构造了状态机`OSStateMachine`和状态机的转换方法`OSStateTransition`之后，我们不再需要手动更新特权级和“特权级改变过”的 flag 了。我们只需要获取 PC 寄存器，判断它的区间，如果是所需区间，激活“到达 xx 特权级”的事件即可。
 
 + 获取数据    
@@ -437,9 +489,12 @@ enum DebuggerActions {
             }
     ```
 
-    内核转换到用户态时用`low_level_switch_breakpoint_group_to_high_level`，而用户态切换回内核时用`high_level_switch_breakpoint_group_to_low_level`：
+    内核转换到用户态时用\textup{low\_level\_switch\_breakpoint\_group\_to\_high\_level}
+    而用户态切换回内核时用\textup{high\_level\_switch\_breakpoint\_group\_to\_low\_level}
+状态机 OSStateMachine 来管理不同调试状态下的行为和转换。每个状态都对应一组事件处理器，当特定事件发生时，将触发预定义的动作，并可能转换到新的状态。这些状态和事件共同控制着调试器的行为，使得调试过程可以根据程序的执行状态进行适当的响应和调整。
 
     ```ts
+    // 定义状态机
     export const OSStateMachine: OSStateMachine = {
         initial: OSStates.kernel,
         states: {
@@ -448,70 +503,50 @@ enum DebuggerActions {
                     [OSEvents.STOPPED]: {
                         target: OSStates.kernel,
                         actions: [
-                            { type: DebuggerActions.try_get_next_breakpoint_group_name }, //if got, save it to a variable. if not, stay the same. initial is "initproc"
-                            { type: DebuggerActions.check_if_kernel_to_user_border_yet }, //if yes, event `AT_KERNEL_TO_USER_BORDER` happens
+                            { type: DebuggerActions.try_get_next_breakpoint_group_name },
+                            // 检查是否到达内核态到用户态的边界，如果是，
+                            //则触发 AT_KERNEL_TO_USER_BORDER 事件
+                            { type: DebuggerActions.check_if_kernel_to_user_border_yet },
                         ],
                     },
+                    // 当内核态到达内核到用户边界时
                     [OSEvents.AT_KERNEL_TO_USER_BORDER]: {
+                        // 目标状态变为单步执行到用户态（kernel_single_step_to_user）
                         target: OSStates.kernel_single_step_to_user,
-                        actions: [{ type: DebuggerActions.start_consecutive_single_steps }],
+                        actions: [
+                            // 开始连续单步执行
+                            { type: DebuggerActions.start_consecutive_single_steps },
+                        ],
                     },
                 },
             },
+            // 单步执行到用户态（kernel_single_step_to_user）相关的行为
             [OSStates.kernel_single_step_to_user]: {
                 on: {
                     [OSEvents.STOPPED]: {
                         target: OSStates.kernel_single_step_to_user,
                         actions: [
-                            { type: DebuggerActions.check_if_user_yet }, //if yes, event `AT_USER` happens. if no, keep single stepping
+                            // 检查是否到达用户态，如果是，则触发 AT_USER 事件
+                            // 如果没有到达用户态，继续单步执行
+                            { type: DebuggerActions.check_if_user_yet },
                         ],
                     },
                     [OSEvents.AT_USER]: {
                         target: OSStates.user,
                         actions: [
-                            // border breakpoint is included in breakpoint group.
-                            // also switch debug symbol file
-                            // after breakpoint group changed, set the next breakpoint group to the kernel's breakpoint group.
-                            { type: DebuggerActions.low_level_switch_breakpoint_group_to_high_level },
+                            // 从低层断点组切换到高层断点组
+                        // 包括边界断点在内的断点组，同时切换调试符号文件
+                        // 断点组改变后，设置下一个断点组为内核的断点组
+                            { type: DebuggerActions.low_level_switch_breakpoint
+                                                            _group_to_high_level },
                         ],
                     },
                 },
             },
-            [OSStates.user]: {
-                on: {
-                    [OSEvents.STOPPED]: {
-                        target: OSStates.user,
-                        actions: [
-                            { type: DebuggerActions.check_if_user_to_kernel_border_yet }, //if yes, event `AT_USER_TO_KERNEL_BORDER` happens
-                        ],
-                    },
-                    [OSEvents.AT_USER_TO_KERNEL_BORDER]: {
-                        target: OSStates.user_single_step_to_kernel,
-                        actions: [
-                            { type: DebuggerActions.start_consecutive_single_steps }, // no need to `get_next_breakpoint_group_name` because the breakpoint group is already set when kernel changed to user breakpoint group
-                        ],
-                    },
-                },
-            },
-            [OSStates.user_single_step_to_kernel]: {
-                on: {
-                    [OSEvents.STOPPED]: {
-                        target: OSStates.user_single_step_to_kernel,
-                        actions: [
-                            { type: DebuggerActions.check_if_kernel_yet }, //if yes, event `AT_KERNEL` happens. if no, keep single stepping
-                        ],
-                    },
-                    [OSEvents.AT_KERNEL]: {
-                        target: OSStates.kernel,
-                        actions: [
-                            { type: DebuggerActions.high_level_switch_breakpoint_group_to_low_level }, // including the border breakpoint
-                        ],
-                    },
-                },
-            },
-        },
-    };
+    ···
+        }
     ```
+用户态user相关的行为和单步执行到内核态\textup{user\_single\_step\_to\_kernel}相关的行为与内核类似，不再赘述。
 由于状态机比较简陋，这种实现还是有不完美的地方：
 1. 一些行为没有放到状态机里面（但是全部都在`doAction`方法里）
 2. 依赖`recentStopThreadID`. 这个数据是在状态机之外的`StopEvent`方法里更新的。  
@@ -562,115 +597,128 @@ enum DebuggerActions {
 ```ts
 	//缓存旧空间的断点，令GDB清除旧断点组的断点，卸载旧断点组的符号表文件，加载新断点组的符号表文件，加载新断点组的断点
 	public updateCurrentBreakpointGroup(updateTo: string) {
-		let newIndex = -1;
-		for (let i = 0; i < this.groups.length; i++) {
-			if (this.groups[i].name === updateTo) {
-				newIndex = i;
-			}
-		}
-		if (newIndex === -1) {
-			this.groups.push(new BreakpointGroup(updateTo, [], new HookBreakpoints([]), undefined));
-			newIndex = this.groups.length - 1;
-		}
-		let oldIndex = -1;
-		for (let j = 0; j < this.groups.length; j++) {
-			if (this.groups[j].name === this.getCurrentBreakpointGroupName()) {
-				oldIndex = j;
-			}
-		}
-		if (oldIndex === -1) {
-			this.groups.push(new BreakpointGroup(this.getCurrentBreakpointGroupName(), [], new HookBreakpoints([]), undefined));
-			oldIndex = this.groups.length - 1;
-		}
-		this.groups[oldIndex].setBreakpointsArguments.forEach((e) => {
-			this.debugSession.miDebugger.clearBreakPoints(e.source.path);
-		});
+    let newIndex = -1;
+    for (let i = 0; i < this.groups.length; i++) {
+        if (this.groups[i].name === updateTo) {
+                newIndex = i;
+        }
+    }
+    if (newIndex === -1) {
+        this.groups.push(new BreakpointGroup(updateTo, [], new 
+        HookBreakpoints([]), undefined));
+        newIndex = this.groups.length - 1;
+    }
+    let oldIndex = -1;
+    for (let j = 0; j < this.groups.length; j++) {
+        if (this.groups[j].name === 
+        this.getCurrentBreakpointGroupName()) {
+            oldIndex = j;
+        }
+   }
+    if (oldIndex === -1) {
+        this.groups.push(new 
+        BreakpointGroup(this.getCurrentBreakpointGroupName(), [], new  
+            HookBreakpoints([]), undefined));
+        oldIndex = this.groups.length - 1;
+    }
+    this.groups[oldIndex].setBreakpointsArguments.forEach((e) => {
+        this.debugSession.miDebugger.clearBreakPoints(e.source.path);
+    });
+    this.debugSession.miDebugger.removeSymbolFile(eval(this.debugSession.brea
+    kpointGroupNameToDebugFilePath)(this.getCurrentBreakpointGroupName()));
+    this.debugSession.miDebugger.addSymbolFile(eval(this.debugSession.breakpo
+                intGroupNameToDebugFilePath)(this.groups[newIndex].name));
+    this.groups[newIndex].setBreakpointsArguments.forEach((args) => {
+        this.debugSession.miDebugger.clearBreakPoints(args.source.path).then(
+        () => {
+                let path = args.source.path;
+                if (this.debugSession.isSSH) {
+                // convert local path to ssh path
+                path = this.debugSession.sourceFileMap.toRemotePath(path);
+                }
+                const all = args.breakpoints.map((brk) => {
+                    return this.debugSession.miDebugger.addBreakPoint({
+                        file: path,
+                        line: brk.line,
+                        condition: brk.condition,
+                        countCondition: brk.hitCondition,
+                    });
+                });
+            },
+        (msg) => {
+                    //TODO
+                }
+        );
+    });
+    this.currentBreakpointGroupName = this.groups[newIndex].name;
+    this.debugSession.showInformationMessage("breakpoint group changed 
+                                                             to " + updateTo);
+}
 
-		this.debugSession.miDebugger.removeSymbolFile(eval(this.debugSession.breakpointGroupNameToDebugFilePath)(this.getCurrentBreakpointGroupName()));
-
-		this.debugSession.miDebugger.addSymbolFile(eval(this.debugSession.breakpointGroupNameToDebugFilePath)(this.groups[newIndex].name));
-
-		this.groups[newIndex].setBreakpointsArguments.forEach((args) => {
-			this.debugSession.miDebugger.clearBreakPoints(args.source.path).then(
-				() => {
-					let path = args.source.path;
-					if (this.debugSession.isSSH) {
-						// convert local path to ssh path
-						path = this.debugSession.sourceFileMap.toRemotePath(path);
-					}
-					const all = args.breakpoints.map((brk) => {
-						return this.debugSession.miDebugger.addBreakPoint({
-							file: path,
-							line: brk.line,
-							condition: brk.condition,
-							countCondition: brk.hitCondition,
-						});
-					});
-				},
-				(msg) => {
-					//TODO
-				}
-			);
-		});
-		this.currentBreakpointGroupName = this.groups[newIndex].name;
-		this.debugSession.showInformationMessage("breakpoint group changed to " + updateTo);
-	}
-	//there should NOT be an `setCurrentBreakpointGroupName()` func because changing currentGroupName also need to change breakpoint group itself, which is what `updateCurrentBreakpointGroup()` does.
-	public getCurrentBreakpointGroupName():string {
-		return this.currentBreakpointGroupName;
-	}
-	// notice it can return undefined
-	public getBreakpointGroupByName(groupName:string){
-		for (const k of this.groups){
-			if (k.name === groupName){
-				return k;
-			}
-		}
-		return;
-	}
-	// notice it can return undefined
-	public getCurrentBreakpointGroup():BreakpointGroup{
-		const groupName = this.getCurrentBreakpointGroupName();
-		for (const k of this.groups){
-			if (k.name === groupName){
-				return k;
-			}
-		}
-		return;
-	}
-	public getNextBreakpointGroup(){
-		return this.nextBreakpointGroup;
-	}
-	public setNextBreakpointGroup(groupName:string){
-		this.nextBreakpointGroup = groupName;
-	}
-	public getAllBreakpointGroups():readonly BreakpointGroup[]{
-		return this.groups;
-	}
-	// save breakpoint information into a breakpoint group, but NOT let GDB set those breakpoints yet
-	public saveBreakpointsToBreakpointGroup(args: DebugProtocol.SetBreakpointsArguments, groupName: string) {
-		let found = -1;
-		for (let i = 0; i < this.groups.length; i++) {
-			if (this.groups[i].name === groupName) {
-				found = i;
-			}
-		}
-		if (found === -1) {
-			this.groups.push(new BreakpointGroup(groupName, [], new HookBreakpoints([]), undefined));
-			found = this.groups.length - 1;
-		}
-		let alreadyThere = -1;
-		for (let i = 0; i < this.groups[found].setBreakpointsArguments.length; i++) {
-			if (this.groups[found].setBreakpointsArguments[i].source.path === args.source.path) {
-				this.groups[found].setBreakpointsArguments[i] = args;
-				alreadyThere = i;
-			}
-		}
-		if (alreadyThere === -1) {
-			this.groups[found].setBreakpointsArguments.push(args);
-		}
-	}
-
+```
+不应该有一个单独的 setCurrentBreakpointGroupName() 函数，因为更改 currentGroupName 的同时也需要更改断点组本身，而这正是 updateCurrentBreakpointGroup() 函数的职责所在。
+需要特别注意的是边界可能会返回undefined。
+```ts
+public getCurrentBreakpointGroupName():string {
+        return this.currentBreakpointGroupName;
+    }
+    // notice it can return undefined
+    public getBreakpointGroupByName(groupName:string){
+        for (const k of this.groups){
+            if (k.name === groupName){
+                return k;
+            }
+        }
+        return;
+  }
+    // notice it can return undefined
+    public getCurrentBreakpointGroup():BreakpointGroup{
+        const groupName = this.getCurrentBreakpointGroupName();
+        for (const k of this.groups){
+            if (k.name === groupName){
+                return k;
+            }
+        }
+            return;
+    }
+    public getNextBreakpointGroup(){
+        return this.nextBreakpointGroup;
+    }
+    public setNextBreakpointGroup(groupName:string){
+        this.nextBreakpointGroup = groupName;
+    }
+    public getAllBreakpointGroups():readonly BreakpointGroup[]{
+        return this.groups;
+    }
+```
+将断点信息保存到断点组中，但不是让 GDB 立即设置这些断点。即在保存断点信息时，断点不会立即被 GDB 应用或激活，而是先进行存储以供后续处理。
+```ts
+ public saveBreakpointsToBreakpointGroup(args:
+    DebugProtocol.SetBreakpointsArguments, groupName: string) {
+            let found = -1;
+            for (let i = 0; i < this.groups.length; i++) {
+                if (this.groups[i].name === groupName) {
+                    found = i;
+                }
+            }
+            if (found === -1) {
+                this.groups.push(new BreakpointGroup(groupName, [], new 
+                HookBreakpoints([]), undefined));
+                found = this.groups.length - 1;
+            }
+            let alreadyThere = -1;
+            for (let i = 0; i < 
+            this.groups[found].setBreakpointsArguments.length; i++) {
+                if (this.groups[found].setBreakpointsArguments[i].source.path 
+                === args.source.path) {
+                    this.groups[found].setBreakpointsArguments[i] = args;
+                    alreadyThere = i;
+                }
+            }
+            if (alreadyThere === -1) {
+                this.groups[found].setBreakpointsArguments.push(args);
+            }
+    }
 ```
 
 #### 文件路径
@@ -756,9 +804,9 @@ rCore-Tutorial-v3 里 user/src/syscall.rs 里的断点就属于所有用户态�
 
 <span id="完善4"></span>
 ### 4. 添加 showInformationMessage 函数，代替 mibase.ts 中无法使用的 console.log
-使用 sendEvent() 方法将构造的事件对象发送给调试客户端，以展示信息提示给用户。
+由于今年完成了状态机的构造，这个问题变得简单了很多。只要使用 sendEvent() 方法将构造的事件对象发送给调试客户端，就可以展示信息提示给用户了。
 
-	```
+```ts
     public showInformationMessage(info:string){
 		this.sendEvent({
 			event: "showInformationMessage",
@@ -766,7 +814,8 @@ rCore-Tutorial-v3 里 user/src/syscall.rs 里的断点就属于所有用户态�
 		} as DebugProtocol.Event);
 
 	}
-    ```
+```
+
 
 <span id="完善5"></span>
 ### 5. 有的情况continue不能跳转到断点
@@ -892,7 +941,7 @@ onOutput(str: string) {
 ### 7. 修改插件本身的编译配置文件 tsconfig.json  
 使得编译本插件的时候忽略文档文件夹和根文件夹下 60m 的“演示视频.mp4”，从而极大减小编译出的插件二进制包的大小
 
-<span id="完善3"></span>
+<span id="完善8"></span>
 ### 8. 修改launch.json 文件
 - 用户可以里提交自定义代码
 - launch.json 支持${workspacefolder}插值（之前有一些参数是不能用这个插值的），大大提升了配置文件的便携性    
@@ -905,7 +954,7 @@ onOutput(str: string) {
 ### 1. 增加通过SSH进行OS调试的功能  
 我们为了进一步实现通过SSH进行远程操作系统调试的功能，通过以下步骤来集成SSH功能：
 
-首先，初始化调试会话，`initializeRequest` 方法设置了调试会话支持的各种功能，例如支持条件断点、函数断点、内存读写等。这些功能通过修改 `response.body` 的不同属性来指定。接着，用`launchRequest` 方法启动调试。然后，使用提供的GDB路径和其他参数（如调试器参数和环境变量）创建 `MI2` 类的实例。根据 `args.pathSubstitutions` 设置源文件的路径替换规则以便调试器可以正确地定位到原始源文件。配置好调试会话后，就开始处理ssh配置。如果提供了SSH参数 (`args.ssh`)，则进入SSH配置分支：
+首先，初始化调试会话，`initializeRequest` 方法设置了调试会话支持的各种功能，例如支持条件断点、函数断点、内存读写等。这些功能通过修改 `response.body` 的不同属性来指定。接着，用`launchRequest` 方法启动调试。然后，使用提供的GDB路径和其他参数（如调试器参数和环境变量）创建 `MI2` 类的实例。根据 `args.pathSubstitutions` 设置源文件的路径替换规则以便调试器可以正确地定位到原始源文件。配置好调试会话后，就开始处理ssh配置。如果提供了SSH参数 (`args.ssh`)，则进入SSH配置分支。
 
 相关代码实现如下：
 
@@ -1128,19 +1177,18 @@ ssh(args: SSHArguments, cwd: string, target: string, procArgs: string, separateC
 <span id="新2"></span>
 ###  2. 通过右键菜单添加/取消边界断点
 
-+ 根据我们现在的状态机，边界断点应该包含在断点组里面，所以像之前那样发一个 customRequest，让 GDB 直接设断点（不经过 mibase.ts 的 setBreakPointsRequest，因此不会保存到断点组里面）就不合适了。
-GoToKernel 等几个按钮的功能要么是不必要的，要么就是已经通过新的状态机自动化地实现了。
+根据我们现在的状态机，边界断点应该包含在断点组里面，所以像之前那样发一个 customRequest，让 GDB 直接设断点（不经过 mibase.ts 的 setBreakPointsRequest，因此不会保存到断点组里面）就不合适了。我们移除了GoToKernel 等几个按钮，添加了一个右键菜单，用户在某个断点上面右键单击即可将这个断点变成边界断点。原因如下：
++ GoToKernel 等几个按钮的功能要么是不必要的，要么就是已经通过新的状态机自动化地实现了。
 + GDB 设断点会有一个断点偏移的问题。例如用户将断点设置在 12 行，GDB 可能会把断点改到 15 行进行设置。之前把边界断点信息都放在配置文件里面时，就需要反复尝试来找到断点不会偏移的行。如果改为用右键菜单设置边界断点，肯定是用户先设断点，断点偏移，然后用户再将偏移后的那个断点设为边界断点，不会出现上述问题。
 + 调试器的用户会反复改动 os 代码，因此边界断点的行号会一直改变。不仅要改配置文件还要考虑断点偏移，比较麻烦。如果开始 debug 再用鼠标点反而更自然。断点组机制的实现也会更自然。例如，每个用户程序的出口断点可能不一样（比如，一些是 rust 程序，一些是 C 的），用户可以选择刚开始 debug 的时候并不指定所有边界断点，而是运行到了用户态再添加用户断点。比静态的配置文件要好的多。
 
-基于以上原因，我们移除了移除GoToKernel 等几个按钮，添加了一个右键菜单，用户在某个断点上面右键单击即可将这个断点变成边界断点。这样边界断点除了通过配置文件添加，也可以通过右键菜单添加或者取消。
+这样做之后边界断点除了通过配置文件添加，也可以通过右键菜单添加或者取消。
 
 
 
 <span id="新3"></span>
 ### 3. 单步步进
-这次更新后实现了之前没有的单步步进的功能，包括逐步执行、单条指令级别的调试以及跳出当前函数的调试操作。通过这些方法，实现逐步分析和理解代码的执行过程，从而更快地定位和解决问题。
-
+为了实现逐步分析和理解代码的执行过程，从而更快地定位和解决问题，这次更新后实现了之前没有的单步步进的功能：包括逐步执行、单条指令级别的调试以及跳出当前函数的调试操作。
 ```ts
 step(reverse: boolean = false): Thenable<boolean> {
 		if (trace) this.log("stderr", "step");
@@ -1171,21 +1219,60 @@ step(reverse: boolean = false): Thenable<boolean> {
 ```
 
 <span id="新4"></span>
-#### 4. 自动安装脚本
+### 4. 自动安装脚本
 由于调试器及ebpf所需工具和库非常多，而且依赖关系非常复杂，为了减少人为错误、提高可移植性、简化复杂构建过程，我们决定编写一个自动化安装脚本来提高效率。
-- [自动安装脚本](https://github.com/chenzhiy2001/code-debug/blob/master/%E5%AE%89%E8%A3%85%E4%B8%8E%E4%BD%BF%E7%94%A8/test.sh)
-经过测试和完善，此脚本可以正确安装调试所需要的工具和库（在网络良好的情况下）。
+考虑到跨平台兼容性和系统资源的利用，我们选择用shell语言来进行编写，并进行输出提示。
+以安装 QEMU为例，检测是否安装 QEMU，如果没有则下载最新版本，配置并编译 QEMU，编译完成后返回上一级目录。提示用户每个步骤的状态，并将这些信息记录到 output1.txt 文件中，用以提示用户。
+```ts
+ # 如果未安装 QEMU，则下载最新版本
+    echo -e "${YELLOW}QEMU is not installed. Downloading the latest version...
+    ${RESET}" | tee -a output1.txt
+    if git clone https://github.com/chenzhiy2001/qemu-system-riscv64; then
+        echo -e "${YELLOW}下载完成${RESET}"| tee -a output1.txt
+        # 编译安装并配置 RISC-V 支持
+        cd qemu-system-riscv64
+        echo -e "${YELLOW}编译qemu.....${RESET}"| tee -a output1.txt
+        ./configure --target-list=riscv64-softmmu,riscv64-linux-user
+        # 如果要支持图形界面，可添加 " --enable-sdl" 参数
+        make -j$(nproc)    
+        cd ..
+        echo -e "${YELLOW}编译完成.${RESET}" | tee -a output1.txt
+    else
+        echo -e "${YELLOW}Error: Failed to clone qemu-system-riscv64.${RESET}"| 
+        tee -a output1.txt
+        exit 1
+    fi
+fi
+```
+- [自动安装脚本](https://github.com/chenzhiy2001/code-debug/blob/master/%E5%AE%89%E8%A3%85%E4%B8%8E%E4%BD%BF%E7%94%A8/test.sh)  
+经过测试和完善，此脚本可以正确安装调试所需要的工具和库（须保持网络通畅）。
 
+<span id="新5"></span>
+由于我们获得的调试信息不够具体详细，我们查阅资料后实现了调试调试器的方法，可以获取更多信息来进一步排查原因。
++ 调试器的构成及调试  
+code-debug插件分为两部分，扩展和调试适配器，这两部分是由两个进程来控制。所以如果调试的话应该是启动两个调试配置，一个是launch extension，另一个是server。  
+    + launch extension
+    调试extension的部分，更具体地说是extension.ts文件，用它调试就会启动一个新窗口（扩展开发宿主）
+    + server
+    调试调试适配器的部分，即除了extension.ts文件的其他文件，这部分的调试需要进行一个配置（code-debug sever的调试配置），在code-debug中的launch.json已经配置好了，里面有一个4711的端口号，启动这个配置以后，会监听这个端口号。在我们要调试的项目中，添加一个 "debugServer": 4711,的配置，使两者可以传递信息。
++ 具体调试步骤：在code-debug中找到调试的界面，选择launch extension，然后按F5，启动一个新窗口，在新窗口中选择要调试的项目打开，然后不要动。回到code-debug的调试界面，点击调试和运行的下拉框，选择code-debug sever，点击绿色的开始调试按钮，就会发现多了一个调试配置，如下图。
+![alt text](image.png)
+
+  接下来，回到新窗口，按F5，按照正常的调试流程进行操作，会触发在文件中设置的断点（推荐的断点位置mibase.ts中的handleBreakpoint（）函数中）。
++ 关于断点设置：尽量不要在extension.ts里面设置断点，会卡在那里，最后终止程序。
++ 关于console.log函数的输出：对于上面两个启动配置，会有两个调试控制台，在不同文件中的输出会在不同的调试控制台中。
+
+<span id="扩充"></span>
+# 第三部分 对可支持调试的操作系统进行语言及运行环境扩充
 <span id="移植"></span>
-## 适配xv6
-### 1. xv6-riscv
-
+## 支持xv6（C语言）的调试
 xv6-riscv 是一个小型的 Unix 第六版操作系统实现，包含了基本的操作系统功能，如进程管理、内存管理、文件系统、设备驱动和系统调用。
 xv6-riscv 采用单内核结构，所有的操作系统服务都在内核模式下运行。内核代码包括内存管理、进程管理、文件系统、驱动程序和系统调用接口等部分。
 
-### 2. 更新package.json
-由于之前的调试器是仅rust语言可见的，我们修改了 package.json 文件，让它能够适配所有语言。
-```
+<span id="移植1"></span>
+### 1. 更新package.json
+由于之前的调试器是仅rust语言可见的，我们修改了调试器的 package.json 文件，让它能够适配所有语言。
+```ts
 "menus": {
 			"editor/title": [
 				{
@@ -1211,9 +1298,9 @@ xv6-riscv 采用单内核结构，所有的操作系统服务都在内核模式�
 			],
         }
 ```
-
-### 3. 编写launch.json
-
+<span id="移植2"></span>
+### 2. 编写launch.json 
+<span id="移植2.1"></span>
 ####  xv6 的qemu启动参数
 一开始我们沿用了了ebpf的部分参数，发现会导致启动不了，最后阅读了官方文档，找到了推荐的启动参数。
  ```
@@ -1229,22 +1316,11 @@ xv6-riscv 采用单内核结构，所有的操作系统服务都在内核模式�
                     "-s", "-S"
                 ],
 ```
-
-#### 调试调试器    
-初步编写配置文件后发现只能从内核态转换到用户态，不能从用户态回到内核态，排查原因无果后我们决定**调试调试器**来进一步排查原因。
-
-    + 调试器的构成及调试  
-    code-debug插件分为两部分，扩展和调试适配器，这两部分是由两个进程来控制。所以如果调试的话应该是启动两个调试配置，一个是launch extension，另一个是server。
-        + launch extension    
-    调试extension的部分，更具体地说是extension.ts文件，用它调试就会启动一个新窗口（扩展开发宿主）
-        + server    
-    调试调试适配器的部分，即除了extension.ts文件的其他文件，这部分的调试需要进行一个配置（code-debug sever的调试配置），在code-debug中的launch.json已经配置好了，
-    里面有一个4711的端口号，启动这个配置以后，会监听这个端口号。
-    在我们要调试的项目中，添加一个``` "debugServer": 4711,```的配置，使两者可以传递信息。
+<span id="移植2.2"></span>  
 
 #### 获取断点组名称及路径  
-经过调试排查，我们发现不能从用户态回到内核态的原因之一是调试器没有成功读取用户态的符号表。xv6的用户文件经过编译后为_+文件名，做出如下修改：
-```
+初步编写配置文件后发现只能从内核态转换到用户态，不能从用户态回到内核态，经过调试排查，我们发现不能从用户态回到内核态的原因之一是调试器没有成功读取用户态的符号表。xv6的用户文件经过编译后为_+文件名，做出如下修改：
+```ts
     "filePathToBreakpointGroupNames": {
                     "isAsync": false,
                     "functionArguments": "filePathStr",
@@ -1257,114 +1333,125 @@ xv6-riscv 采用单内核结构，所有的操作系统服务都在内核模式�
                 }
         
 ```
+<span id="移植2.3"></span>  
+
 #### xv6 内核态和用户态转换的边界  
 不能从用户态回到内核态还有一个原因是用户态的边界未被正确设置。
     + kernel/syscall.c是负责处理已经进到内核之后的syscall处理流程。我们需要的是用户态的syscall接口，在usys.S中。
     + 因为usys.S文件中有多个ecall，也就是说**用户态有多个边界断点**（因为xv6在用户态没有一个专门的syscall()处理函数，而是每个syscall的调用单独处理）。我们的调试器一开始是基于ebpf写的，所以用户和内核的边界都只有一个，添加新的边界断点时旧的会被替换掉。所以需要将边界改成数组，并**修改调试器的边界代码及相关处理函数**。   
         
-```
-        export class Border  {
+修改边界定义：
+
+```ts
+    export class Border  {
             filepath:string;
             line:number;
             constructor(filepath:string, line:number){
                 this.filepath = filepath;
                 this.line = line;
-            }
         }
-        class BreakpointGroup {
+    }
+    class BreakpointGroup {
             name: string;
             setBreakpointsArguments: DebugProtocol.SetBreakpointsArguments[];
             borders?:Border[]; // can be a border or undefined
-            hooks:HookBreakpoints; //cannot be `undefined`. It should at least an empty array `[]`.
-            constructor(name: string, setBreakpointsArguments: DebugProtocol.SetBreakpointsArguments[], hooks:HookBreakpoints, borders?:Border[] ) {
+            hooks:HookBreakpoints; //cannot be `undefined`. It should at least
+            an empty array `[]`.
+            constructor(name: string, setBreakpointsArguments: 
+            DebugProtocol.SetBreakpointsArguments[], hooks:HookBreakpoints, 
+            borders?:Border[] ) {
                 console.log(name);
                 this.name = name;
                 this.setBreakpointsArguments = setBreakpointsArguments;
                 this.hooks = hooks;
                 this.borders = borders;
             }
-        }
-        public updateBorder(border: Border) {
-                const result = eval(this.debugSession.filePathToBreakpointGroupNames)(border.filepath);
-                const groupNamesOfBorder:string[] = result;
-                for(const groupNameOfBorder of groupNamesOfBorder){
-                    let groupExists = false;
-                    for(const group of this.groups){
-                        if(group.name === groupNameOfBorder){
-                            groupExists = true;
-                            group.borders.push(border);
-                        }
-                    }
-                    if(groupExists === false){
-                        this.groups.push(new BreakpointGroup(groupNameOfBorder, [], new HookBreakpoints([]), [border]));
-                    }
+}
+```
+
+修改更新边界的逻辑：  
+通过 eval 执行 filePathToBreakpointGroupNames 函数来获取与边界断点文件路径对应的断点组名称列表，然后遍历这些组名，检查每个组名是否存在于当前断点组列表中。如果找到匹配的断点组，则将边界断点添加到该组的 borders 属性中；如果未找到，则创建一个新的断点组，并将边界断点添加到新的断点组中。
+
+```ts
+public updateBorder(border: Border) {
+            const result = eval(this.debugSession.filePathToBreakpointGroupNames)
+            (border.filepath);
+            const groupNamesOfBorder:string[] = result;
+            for(const groupNameOfBorder of groupNamesOfBorder){
+                let groupExists = false;
+                for(const group of this.groups){
+                if(group.name === groupNameOfBorder){
+                        groupExists = true;
+                        group.borders.push(border);
                 }
             }
-        else if(action.type === DebuggerActions.check_if_kernel_to_user_border_yet){
-                    this.showInformationMessage('doing action: check_if_kernel_to_user_border_yet');
-                    let filepath:string = "";
-                    let lineNumber:number = -1;
-                    const kernelToUserBorders = this.breakpointGroups.getCurrentBreakpointGroup().borders; // 获取所有边界断点
-                    //const kernelToUserBorderFile = this.breakpointGroups.getCurrentBreakpointGroup().border?.filepath;
-                    //const kernelToUserBorderLine = this.breakpointGroups.getCurrentBreakpointGroup().border?.line;
-                    //todo if you are trying to do multi-core debugging, you might need to modify the 3rd argument.
-                    this.miDebugger.getStack(0, 1, this.recentStopThreadID).then(v=>{
-                        filepath = v[0].file;
-                        lineNumber = v[0].line;
+            if(groupExists === false){
+                this.groups.push(new BreakpointGroup(groupNameOfBorder, [], 
+                new HookBreakpoints([]), [border]));
+            }
+        }
+    }
+```
+修改调用边界信息的相关函数：  
 
-                        if (kernelToUserBorders) {
-                            for (const border of kernelToUserBorders) {
-                            if (filepath === border.filepath && lineNumber === border.line) {
-                            this.OSStateTransition(new OSEvent(OSEvents.AT_KERNEL_TO_USER_BORDER));
-                            break;
-                            }
-                            }
-                            }
-                        });
-                        
-                }
-                
-                else if(action.type === DebuggerActions.check_if_user_to_kernel_border_yet){
-                    this.showInformationMessage('doing action: check_if_user_to_kernel_border_yet');
-                    let filepath:string = "";
-                    let lineNumber:number = -1;
-                    const userToKernelBorders = this.breakpointGroups.getCurrentBreakpointGroup().borders; 
-                    const userToKernelBorderFile = this.breakpointGroups.getCurrentBreakpointGroup().border?.filepath;
-                    const userToKernelBorderLine = this.breakpointGroups.getCurrentBreakpointGroup().border?.line;
-                    this.miDebugger.getStack(0, 1, this.recentStopThreadID).then(v=>{
-                        filepath = v[0].file;
-                        lineNumber = v[0].line;
+通过调用 miDebugger.getStack 方法获取当前执行堆栈的文件路径和行号，接着遍历边界断点列表，比较文件路径和行号是否匹配。如果匹配，则触发操作系统状态转换事件。
 
-                        if (userToKernelBorders) {
-                            for (const border of userToKernelBorders) {
-                            if (filepath === border.filepath && lineNumber === border.line) {
-                            this.OSStateTransition(new OSEvent(OSEvents.AT_USER_TO_KERNEL_BORDER));
-                            break;
-                        }
-                        }
-                    } 
-                    });
-                    
+```ts
+else if(action.type === DebuggerActions.check_if_user_to_kernel_border_yet){
+        this.showInformationMessage('doing action: check_if_user_to_kernel_border_yet');
+        let filepath:string = "";
+        let lineNumber:number = -1;
+        const userToKernelBorders = 
+        this.breakpointGroups.getCurrentBreakpointGroup().borders;
+        const userToKernelBorderFile = 
+        this.breakpointGroups.getCurrentBreakpointGroup().border?.filepath;
+        const userToKernelBorderLine = 
+        this.breakpointGroups.getCurrentBreakpointGroup().border?.line;
+        this.miDebugger.getStack(0, 1, this.recentStopThreadID).then(v=>{
+            filepath = v[0].file;
+            lineNumber = v[0].line;
+            if (userToKernelBorders) {
+                for (const border of userToKernelBorders) {
+                    if (filepath === border.filepath && lineNumber ===  border.line) {
+                        this.OSStateTransition(new 
+                        OSEvent(OSEvents.AT_USER_TO_KERNEL_BORDER));
+                    break;
+                    }   
                 }
+            } 
+        });
+    }
+else if(action.type === DebuggerActions.check_if_kernel_to_user_border_yet){
+    //···此处与上面函数逻辑相同，省略
+}
+
 ```
 在launch.json里面只指定边界断点，没有指定边界断点所属的断点组。边界断点所属的断点组是由调试器自己去判定的。所以当触发了多个断点组中的一个，
+
 调试器就会判定这个边界断点属于某某断点组，然后进行断点组切换的流程。
 
-#### 钩子断点
-完成以上修改之后，用户态和内核态已经可以正常切换了。但是经过几次切换后，调试器会自己中断。是因为我们之前将钩子断点设在了第6行，此时获取下一进程名时返回为空。
-```
-// sysfile.c
-1 sys_exec(void)
-2 {
-3   char path[MAXPATH], *argv[MAXARG];
-4   int i;
-5   uint64 uargv, uarg;
-6   argaddr(1, &uargv);
-7   if(argstr(0, path, MAXPATH) < 0) {
-8     return -1;
-9   }
-10 }
-```
-修改后将钩子断点设置在了``` int ret = exec(path, argv);```这里，可以正常返回下一进程名，至此，调试器可以正确调试xv6。
+<span id="移植2.4"></span>
 
-[正确的配置文件](https://github.com/chenzhiy2001/code-debug/blob/master/installation%20and%20usage/xv6_launch.json)
+#### 修改钩子断点
+
+完成以上修改之后，用户态和内核态已经可以正常切换了。但是经过几次切换后，调试器会自己中断。是因为我们之前将钩子断点设在了第6行，此时获取下一进程名时返回为空。
+
+```ts
+    // sysfile.c
+    1 sys_exec(void)
+    2 {
+    3   char path[MAXPATH], *argv[MAXARG];
+    4   int i;
+    5   uint64 uargv, uarg;
+    6   argaddr(1, &uargv);
+    7   if(argstr(0, path, MAXPATH) < 0) {
+    8     return -1;
+    9   }
+    10 }
+```
+
+修改后将钩子断点设置在了``` int ret = exec(path, argv);```，可以正常返回下一进程名，至此，调试器可以正确调试xv6和ebpf。
+
+<span id="移植3"></span>
+### 正确的配置文件
+经验证后的 [配置文件](https://github.com/chenzhiy2001/code-debug/blob/master/installation%20and%20usage/xv6_launch.json)
