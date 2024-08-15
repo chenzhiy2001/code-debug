@@ -191,9 +191,15 @@ export class BreakpointGroups {
 			this.debugSession.miDebugger.clearBreakPoints(e.source.path);
 		});
 
-		this.debugSession.miDebugger.removeSymbolFile(eval(this.debugSession.breakpointGroupNameToDebugFilePath)(this.getCurrentBreakpointGroupName()));
-
-		this.debugSession.miDebugger.addSymbolFile(eval(this.debugSession.breakpointGroupNameToDebugFilePath)(this.groups[newIndex].name));
+		let currentBreakpointGroupSymbolFiles:string[] = eval(this.debugSession.breakpointGroupNameToDebugFilePaths)(this.getCurrentBreakpointGroupName());
+		for(let f of currentBreakpointGroupSymbolFiles){
+			this.debugSession.miDebugger.removeSymbolFile(f);
+		}
+		
+		let nextBreakpointGroupSymbolFiles:string[] = eval(this.debugSession.breakpointGroupNameToDebugFilePaths)(this.groups[newIndex].name);
+		for(let f of nextBreakpointGroupSymbolFiles){
+			this.debugSession.miDebugger.addSymbolFile(f);
+		}
 
 		this.groups[newIndex].setBreakpointsArguments.forEach((args) => {
 			this.debugSession.miDebugger.clearBreakPoints(args.source.path).then(
@@ -375,7 +381,7 @@ export class MI2DebugSession extends DebugSession {
 	public user_memory_ranges:string[][];
 	protected breakpointGroups:BreakpointGroups;
 	public filePathToBreakpointGroupNames:FunctionString;
-	public breakpointGroupNameToDebugFilePath:FunctionString;
+	public breakpointGroupNameToDebugFilePaths:FunctionString;
 	public OSStateMachine = OSStateMachine;
 	public OSState:OSState;
 	protected recentStopThreadID: number;

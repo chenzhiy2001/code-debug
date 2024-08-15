@@ -67,7 +67,7 @@ export interface AttachRequestArguments extends DebugProtocol.AttachRequestArgum
 	kernel_memory_ranges:string[][];
 	user_memory_ranges:string[][];
 	filePathToBreakpointGroupNames:ObjectAsFunction;
-	breakpointGroupNameToDebugFilePath:ObjectAsFunction;
+	breakpointGroupNameToDebugFilePaths:ObjectAsFunction;
 }
 
 let NEXT_TERM_ID = 1;
@@ -161,7 +161,7 @@ class GDBDebugSession extends MI2DebugSession {
 		this.kernel_memory_ranges = args.kernel_memory_ranges;
 		this.user_memory_ranges = args.user_memory_ranges;
 		this.filePathToBreakpointGroupNames = toFunctionString(args.filePathToBreakpointGroupNames);
-		this.breakpointGroupNameToDebugFilePath = toFunctionString(args.breakpointGroupNameToDebugFilePath);
+		this.breakpointGroupNameToDebugFilePaths = toFunctionString(args.breakpointGroupNameToDebugFilePaths);
 		//second_breakpoint_group 起到兜底的作用。万一内核中没有获取到nextBreakpointGroup，至少可以成功切换一次断点组。
 		this.breakpointGroups = new BreakpointGroups(this.first_breakpoint_group, this, this.second_breakpoint_group);
 		this.OSState = {status:this.OSStateMachine.initial} as OSState;
