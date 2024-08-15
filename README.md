@@ -1316,7 +1316,7 @@ else if(action.type === DebuggerActions.check_if_kernel_to_user_border_yet){
 
 ### 硬件部署及调试
 
-硬件连接及相关软件驱动详见：\hyperref[app:xv6]{附录D}。
+硬件连接及相关软件驱动详见：[硬件配置及使用](https://gitlab.eduxiji.net/T202410011992734/project2210132-235708/-/blob/master/installation%20and%20usage/%E7%A1%AC%E4%BB%B6%E9%85%8D%E7%BD%AE%E5%8F%8A%E4%BD%BF%E7%94%A8.md)。
 
 <span id="硬件2.1"></span>
 
