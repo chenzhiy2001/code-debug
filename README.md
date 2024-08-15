@@ -112,8 +112,7 @@ code-debug是一款适用于操作系统开发的源代码级调试工具，实�
 
 code-dcbug 对上通过 DAP 协议和 VSCode 调试界面进行交互在 Dcbug Adaptcr中实现“断点组切换”;对下通过 GDB/MI接口控制 GDB,GDB再与OpcnOCD/GDBscrvcr 通信以调试日标操作系统。其核心的原理是，将用户设置的 GDB 断点按断点所在的地址空间分为若干组，在任意时刻下，只有当前地址空间对应的断点组是生效的。如果调试器检测到地址空间发生了切换，就会令GDB 立即切换到切换后的地址空间对应的断点组和符号表，从而使得在任意时刻下，GDB都只设置当前运行的指令所在的地址空间的断点，这样就避免了断点失效的问题，保证了用户设置的用户态内核态的断点均可生效。
 
-![image](https://github.com/user-attachments/assets/11348b53-806e-4cee-83be-b788cd9565aa)
-基于Debug Adapter的调试架构
+![微信图片_20240815033802](https://github.com/user-attachments/assets/77131068-ea66-46aa-926d-9a7c319e6b13)
 
 <span id="概要3"></span>
 ### 调试工具功能说明与使用方式介绍
@@ -162,9 +161,17 @@ fi
 + 在code-debug文件夹下git pull更新软件仓库，确保代码是最新的，然后按F5运行插件，这时会打开一个新的VSCode窗口。 后续操作步骤均在新窗口内完成！
 + 在新窗口内，打开需要调试的项目，按照上面的提示配置launch.json并保存。
 + 按F5键，即可开始使用本插件。
+  
+ ![image](https://github.com/user-attachments/assets/ee8e808a-a44f-4871-ba5b-2f4f070a7b9e)
+
+    
 + 清除所有断点（Remove All Breakpoints 按钮）
 + 设置内核入口出口（Set Border Breakpoints 按钮）、钩子断点(Set hook breakpoints 按钮)
 + 设置内核代码和用户程序代码的断点
+  
+ ![image](https://github.com/user-attachments/assets/d9f7bce6-f536-45ac-a871-5e51a37fdebc)
+
+
 + 按continue按钮开始调试
 + 当运行到位于内核出口或用户出口时，插件会自动切换到用户态或内核态的断点
 
@@ -182,11 +189,9 @@ fi
 
  - 具体调试步骤：在code-debug中找到调试的界面，选择launch extension，然后按F5，启动一个新窗口，在新窗口中选择要调试的项目打开，然后不要动。回到code-debug的调试界面，点击调试和运行的下拉框，选择code-debug sever，点击绿色的开始调试按钮，就会发现多了一个调试配置，如下图。
     
-   %\includegraphics[width=0.9\linewidth]{figures/调试调试器.png}
-    \begin{center}
-   图1.4 调试调试器
-    \end{center}
-    接下来，回到新窗口，按F5，按照正常的调试流程进行操作，会触发在文件中设置的断点（推荐的断点位置mibase.ts中的handleBreakpoint（）函数中）。
+    ![image](https://github.com/user-attachments/assets/b616e930-dbba-4c82-b0e2-1eca1bd8b08c)
+
+   接下来，回到新窗口，按F5，按照正常的调试流程进行操作，会触发在文件中设置的断点（推荐的断点位置mibase.ts中的handleBreakpoint（）函数中）。
 
  - 关于断点设置：尽量不要在extension.ts里面设置断点，会卡在那里，最后终止程序。
  - 关于console.log函数的输出：对于上面两个启动配置，会有两个调试控制台，在不同文件中的输出会在不同的调试控制台中。
@@ -1296,8 +1301,9 @@ else if(action.type === DebuggerActions.check_if_kernel_to_user_border_yet){
 与硬件的连接主要借助jtag接口和openocd：前者一种硬件接口标准，用于芯片内部测试、系统仿真和调试，它允许开发者通过一组标准引脚（TCK, TMS, TDI, TDO, 以及可选的TRST）与芯片进行通信；后者是一个开源的调试器，它提供了对多种处理器和调试硬件的接口，包括JTAG，主要作用是作为一个中间件，它接收来自开发环境（如Eclipse, Visual Studio等）的调试命令，并通过JTAG等接口发送到目标硬件上执行。
 
 实际调试过程中，pc端的openocd向硬件上的u-boot发送指令，二者通过jtag通信。u-boot收到启动指令后，加载运行硬件上的os，完成后，u-boot停止。此后gdb的指令直接通过openocd沿着jtag发送给os，实现控制和访问，得到的数据也精油同样的过程返回gdb，以得到调试信息。
- 
- 插图
+
+ ![image](https://github.com/user-attachments/assets/b5b06a5a-6fe2-45c6-82f1-ed5eeb56b66d)
+
 
 简而言之，JTAG提供了硬件层面的连接和通信能力，而OpenOCD则提供了软件层面的控制和调试功能。两者结合使用，为嵌入式系统的开发和调试提供了强大的支持。
 
