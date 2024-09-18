@@ -8,9 +8,9 @@
             "autorun": ["add-symbol-file ${workspaceFolder}/kernel/kernel"],
             "target": ":1234",
             "remote": true,
-            "cwd": "/home/kaining/xv6-riscv",
+            "cwd": "${workspaceFolder}",
             "valuesFormatting": "parseText",
-            "gdbpath": "${workspaceFolder}/riscv64-unknown-elf-gdb-rust.sh",
+            "gdbpath": "riscv64-unknown-elf-gdb",
             "showDevDebugOutput":true,
             "internalConsoleOptions": "openOnSessionStart",
             "printCalls": true,
@@ -139,11 +139,11 @@
                 "functionArguments": "filePathStr",
                 "functionBody": "if (filePathStr.includes('kernel')) { return ['kernel']; } else if (filePathStr === '${workspaceFolder}/user/usys.S') { return ['${workspaceFolder}/user/ln.c', '${workspaceFolder}/user/ls.c', '${workspaceFolder}/user/rm.c', '${workspaceFolder}/user/sh.c', '${workspaceFolder}/user/wc.c', '${workspaceFolder}/user/cat.c', '${workspaceFolder}/user/echo.c', '${workspaceFolder}/user/grep.c', '${workspaceFolder}/user/init.c', '${workspaceFolder}/user/kill.c', '${workspaceFolder}/user/ulib.c', '${workspaceFolder}/user/grind.c', '${workspaceFolder}/user/mkdir.c', '${workspaceFolder}/user/printf.c', '${workspaceFolder}/user/zombie.c', '${workspaceFolder}/user/umalloc.c', '${workspaceFolder}/user/forktest.c', '${workspaceFolder}/user/stressfs.c', '${workspaceFolder}/user/usertests.c']; } else if (filePathStr.includes('user') && filePathStr !== '${workspaceFolder}/user/usys.S') { return [filePathStr]; } else { return ['kernel']; }"
             },
-            "breakpointGroupNameToDebugFilePath":{
+            "breakpointGroupNameToDebugFilePaths":{
                 "isAsync": false,
                 "functionArguments": "groupName",
-                "functionBody": "if (groupName === 'kernel') {        return '${workspaceFolder}/kernel/kernel';    }    else {        let pathSplited = groupName.split('/');            let filename = pathSplited[pathSplited.length - 1].split('.');         let filenameWithoutExtension = filename[filename.length - 2];        return '${workspaceFolder}/user/' + '_' + filenameWithoutExtension;    }"
+                "functionBody": "if (groupName === 'kernel') {        return ['${workspaceFolder}/kernel/kernel'];    }    else {        let pathSplited = groupName.split('/');            let filename = pathSplited[pathSplited.length - 1].split('.');         let filenameWithoutExtension = filename[filename.length - 2];        return ['${workspaceFolder}/user/' + '_' + filenameWithoutExtension];    }"
             }
-        },
-    ],
+        }
+    ]
 }
