@@ -15,6 +15,7 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
 	valuesFormatting: ValuesFormattingMode;
 	printCalls: boolean;
 	showDevDebugOutput: boolean;
+	registerLimit: string;
 }
 
 export interface AttachRequestArguments extends DebugProtocol.AttachRequestArguments {
@@ -29,6 +30,7 @@ export interface AttachRequestArguments extends DebugProtocol.AttachRequestArgum
 	valuesFormatting: ValuesFormattingMode;
 	printCalls: boolean;
 	showDevDebugOutput: boolean;
+	registerLimit: string;
 }
 
 class MagoDebugSession extends MI2DebugSession {
@@ -51,7 +53,7 @@ class MagoDebugSession extends MI2DebugSession {
 
 	protected override launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments): void {
 		const dbgCommand = args.magomipath || "mago-mi";
-		if (this.checkCommand(dbgCommand)) {
+		if (!this.checkCommand(dbgCommand)) {
 			this.sendErrorResponse(response, 104, `Configured debugger ${dbgCommand} not found.`);
 			return;
 		}
@@ -66,6 +68,7 @@ class MagoDebugSession extends MI2DebugSession {
 		this.setValuesFormattingMode(args.valuesFormatting);
 		this.miDebugger.printCalls = !!args.printCalls;
 		this.miDebugger.debugOutput = !!args.showDevDebugOutput;
+		this.miDebugger.registerLimit = args.registerLimit ?? "";
 		this.miDebugger.load(args.cwd, args.target, args.arguments, undefined, args.autorun || []).then(() => {
 			this.sendResponse(response);
 		}, err => {
@@ -75,7 +78,7 @@ class MagoDebugSession extends MI2DebugSession {
 
 	protected override attachRequest(response: DebugProtocol.AttachResponse, args: AttachRequestArguments): void {
 		const dbgCommand = args.magomipath || "mago-mi";
-		if (this.checkCommand(dbgCommand)) {
+		if (!this.checkCommand(dbgCommand)) {
 			this.sendErrorResponse(response, 104, `Configured debugger ${dbgCommand} not found.`);
 			return;
 		}
@@ -88,6 +91,7 @@ class MagoDebugSession extends MI2DebugSession {
 		this.setValuesFormattingMode(args.valuesFormatting);
 		this.miDebugger.printCalls = !!args.printCalls;
 		this.miDebugger.debugOutput = !!args.showDevDebugOutput;
+		this.miDebugger.registerLimit = args.registerLimit ?? "";
 		this.miDebugger.attach(args.cwd, args.executable, args.target, args.autorun || []).then(() => {
 			this.sendResponse(response);
 		}, err => {

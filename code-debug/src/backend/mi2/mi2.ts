@@ -24,6 +24,50 @@ function couldBeOutput(line: string) {
 
 const trace = false;
 
+class LogMessage {
+	protected logMsgVar = "";
+	protected logMsgVarProcess = "";
+	protected logMsgRplNum = 0;
+	protected logMsgRplItem: string[] = [];
+	protected logMsgMatch = /(^\$[0-9]*[\ ]*=[\ ]*)(.*)/;
+	protected logReplaceTest = /{([^}]*)}/g;
+	public logMsgBrkList: Breakpoint[] = [];
+
+	logMsgOutput(record:any){
+		if ((record.type === 'console')) {
+			if(record.content.startsWith("$")){
+				const content = record.content;
+				const variableMatch = this.logMsgMatch.exec(content);
+				if (variableMatch) {
+					const value = content.substr(variableMatch[1].length).trim();
+					this.logMsgRplItem.push(value);
+					this.logMsgRplNum--;
+					if(this.logMsgRplNum == 0){
+						for(let i = 0; i < this.logMsgRplItem.length; i++){
+							this.logMsgVarProcess = this.logMsgVarProcess.replace("placeHolderForVariable", this.logMsgRplItem[i]);
+						}
+						return "Log Message:"  + this.logMsgVarProcess;
+					}
+				}
+			}
+			return undefined;
+		}
+	}
+
+	logMsgProcess(parsed:MINode){
+		this.logMsgBrkList.forEach((brk)=>{
+			if(parsed.outOfBandRecord[0].output[0][1] == "breakpoint-hit" && parsed.outOfBandRecord[0].output[2][1] == brk.id){
+				this.logMsgVar = brk?.logMessage;
+				const matches = this.logMsgVar.match(this.logReplaceTest);
+				const count = matches ? matches.length : 0;
+				this.logMsgRplNum = count;
+				this.logMsgVarProcess = this.logMsgVar.replace(this.logReplaceTest, "placeHolderForVariable");
+				this.logMsgRplItem = [];
+			}
+		});
+	}
+}
+
 export class MI2 extends EventEmitter implements IBackend {
 	constructor(
 		public application: string,
@@ -50,6 +94,7 @@ export class MI2 extends EventEmitter implements IBackend {
 			this.procEnv = env;
 		}
 	}
+	protected logMessage:LogMessage = new LogMessage;
 
 	getOriginallyNoTokenMINodes(num: number):Array<MINode> {
 		const info = [];
@@ -235,8 +280,12 @@ export class MI2 extends EventEmitter implements IBackend {
 			}),
 			this.sendCommand('environment-directory "' + escape(cwd) + '"', true),
 		];
-		if (!attach) cmds.push(this.sendCommand('file-exec-and-symbols "' + escape(target) + '"'));
-		if (this.prettyPrint) cmds.push(this.sendCommand("enable-pretty-printing"));
+		if (!attach)
+			cmds.push(this.sendCommand("file-exec-and-symbols \"" + escape(target) + "\""));
+		if (this.prettyPrint)
+			cmds.push(this.sendCommand("enable-pretty-printing"));
+		if (this.frameFilters)
+			cmds.push(this.sendCommand("enable-frame-filters"));
 		for (const cmd of this.extraCommands) {
 			cmds.push(this.sendCommand(cmd));
 		}
@@ -391,6 +440,10 @@ export class MI2 extends EventEmitter implements IBackend {
 					parsed.outOfBandRecord.forEach((record) => {
 						if (record.isStream) {
 							this.log(record.type, record.content);
+							const logOutput = this.logMessage.logMsgOutput(record);
+							if(logOutput){
+								this.log("console", logOutput);
+							}
 						} else {
 							if (record.type == "exec") {
 								this.emit("exec-async-output", parsed);
@@ -407,8 +460,7 @@ export class MI2 extends EventEmitter implements IBackend {
 										switch (reason) {
 											case "breakpoint-hit":
 												this.emit("breakpoint", parsed);
-												//this.log("PARSED RAW MI INFO",JSON.stringify(parsed));
-												//->MiDebugger
+												this.logMessage.logMsgProcess(parsed);
 												break;
 											case "watchpoint-trigger":
 											case "read-watchpoint-trigger":
@@ -614,6 +666,22 @@ export class MI2 extends EventEmitter implements IBackend {
 		return this.sendCommand("break-condition " + bkptNum + " " + condition);
 	}
 
+	setLogPoint(bkptNum:number, command:string): Thenable<any> {
+		const regex = /{([a-z0-9A-Z-_\.\>\&\*\[\]]*)}/gm;
+		let m:RegExpExecArray;
+		let commands:string = "";
+
+		while ((m = regex.exec(command))) {
+			if (m.index === regex.lastIndex) {
+				regex.lastIndex++;
+			}
+			if (m[1]) {
+				commands += `\"print ${m[1]}\" `;
+			}
+		}
+		return this.sendCommand("break-commands " + bkptNum + " " + commands);
+	}
+
 	setEntryBreakPoint(entryPoint: string): Thenable<any> {
 		return this.sendCommand("break-insert -t -f " + entryPoint);
 	}
@@ -645,15 +713,28 @@ export class MI2 extends EventEmitter implements IBackend {
 				if (result.resultRecords.resultClass == "done") {
 					const bkptNum = parseInt(result.result("bkpt.number"));
 					const newBrk = {
+						id: bkptNum,
 						file: breakpoint.file ? breakpoint.file : result.result("bkpt.file"),
 						raw: breakpoint.raw,
 						line: parseInt(result.result("bkpt.line")),
 						condition: breakpoint.condition,
+						logMessage: breakpoint?.logMessage,
 					};
 					if (breakpoint.condition) {
 						this.setBreakPointCondition(bkptNum, breakpoint.condition).then((result) => {
 							if (result.resultRecords.resultClass == "done") {
 								this.breakpoints.set(newBrk, bkptNum);
+								resolve([true, newBrk]);
+							} else {
+								resolve([false, undefined]);
+							}
+						}, reject);
+					} else if (breakpoint.logMessage) {
+						this.setLogPoint(bkptNum, breakpoint.logMessage).then((result) => {
+							if (result.resultRecords.resultClass == "done") {
+								breakpoint.id = newBrk.id;
+								this.breakpoints.set(newBrk, bkptNum);
+								this.logMessage.logMsgBrkList.push(breakpoint);
 								resolve([true, newBrk]);
 							} else {
 								resolve([false, undefined]);
@@ -781,6 +862,11 @@ export class MI2 extends EventEmitter implements IBackend {
 			const func = MINode.valueOf(element, "@frame.func");
 			const filename = MINode.valueOf(element, "@frame.file");
 			let file: string = MINode.valueOf(element, "@frame.fullname");
+			if (!file) {
+				// Fallback to using `file` if `fullname` is not provided.
+				// GDB does this for some reason when frame filters are used.
+				file = MINode.valueOf(element, "@frame.file");
+			}
 			if (file) {
 				if (this.isSSH)
 					file = path.posix.normalize(file);
@@ -976,7 +1062,7 @@ export class MI2 extends EventEmitter implements IBackend {
 	async getRegisterValues(): Promise<RegisterValue[]> {
 		if (trace)
 			this.log("stderr", "getRegisterValues");
-		const result = await this.sendCommand("data-list-register-values N 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32");//todo THIS IS RISC-V ONLY!
+		const result = await this.sendCommand("data-list-register-values --skip-unavailable N " + this.registerLimit);
 		const nodes = result.result('register-values');
 		if (!Array.isArray(nodes)) {
 			throw new Error('Failed to retrieve register values.');
@@ -1110,10 +1196,12 @@ export class MI2 extends EventEmitter implements IBackend {
 	}
 
 	prettyPrint: boolean = true;
+	frameFilters: boolean = true;
 	printCalls: boolean;
 	debugOutput: boolean;
 	features: string[];
 	public procEnv: any;
+	public registerLimit: string;
 	protected isSSH: boolean;
 	protected sshReady: boolean;
 	protected currentToken: number = 1;

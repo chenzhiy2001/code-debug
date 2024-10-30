@@ -37,8 +37,10 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
 	stopAtEntry: boolean | string;
 	ssh: SSHArguments;
 	valuesFormatting: ValuesFormattingMode;
+	frameFilters: boolean;
 	printCalls: boolean;
 	showDevDebugOutput: boolean;
+	registerLimit: string;
 }
 
 export interface AttachRequestArguments extends DebugProtocol.AttachRequestArguments {
@@ -55,6 +57,7 @@ export interface AttachRequestArguments extends DebugProtocol.AttachRequestArgum
 	stopAtEntry: boolean | string;
 	ssh: SSHArguments;
 	valuesFormatting: ValuesFormattingMode;
+	frameFilters: boolean;
 	printCalls: boolean;
 	showDevDebugOutput: boolean;
 	qemuPath: string;
@@ -68,6 +71,7 @@ export interface AttachRequestArguments extends DebugProtocol.AttachRequestArgum
 	user_memory_ranges:string[][];
 	filePathToBreakpointGroupNames:ObjectAsFunction;
 	breakpointGroupNameToDebugFilePaths:ObjectAsFunction;
+	registerLimit: string;
 }
 
 let NEXT_TERM_ID = 1;
@@ -83,12 +87,13 @@ class GDBDebugSession extends MI2DebugSession {
 		response.body.supportsStepBack = true;
 		response.body.supportsReadMemoryRequest = true;
 		response.body.supportsWriteMemoryRequest = true;
+		response.body.supportsLogPoints = true;
 		this.sendResponse(response);
 	}
 
 	protected override launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments): void {
 		const dbgCommand = args.gdbpath || "gdb";
-		if (this.checkCommand(dbgCommand)) {
+		if (!this.checkCommand(dbgCommand)) {
 			this.sendErrorResponse(response, 104, `Configured debugger ${dbgCommand} not found.`);
 			return;
 		}
@@ -102,9 +107,11 @@ class GDBDebugSession extends MI2DebugSession {
 		this.started = false;
 		this.crashed = false;
 		this.setValuesFormattingMode(args.valuesFormatting);
+		this.miDebugger.frameFilters = !!args.frameFilters;
 		this.miDebugger.printCalls = !!args.printCalls;
 		this.miDebugger.debugOutput = !!args.showDevDebugOutput;
 		this.stopAtEntry = args.stopAtEntry;
+		this.miDebugger.registerLimit = args.registerLimit ?? "";
 		if (args.ssh !== undefined) {
 			if (args.ssh.forwardX11 === undefined)
 				args.ssh.forwardX11 = true;
@@ -138,8 +145,7 @@ class GDBDebugSession extends MI2DebugSession {
 		const dbgCommand = args.gdbpath || "gdb";
 
 		/* We (code-debug the OS Debugger Devs) use custom shell scripts as "gdbpath", so we don't check commands here.
-
-		if (this.checkCommand(dbgCommand)) {
+		if (!this.checkCommand(dbgCommand)) {
 			this.sendErrorResponse(response, 104, `Configured debugger ${dbgCommand} not found.`);
 			return;
 		}
@@ -182,9 +188,11 @@ class GDBDebugSession extends MI2DebugSession {
 		this.initialRunCommand = args.stopAtConnect ? RunCommand.NONE : RunCommand.CONTINUE;
 		this.isSSH = false;
 		this.setValuesFormattingMode(args.valuesFormatting);
+		this.miDebugger.frameFilters = !!args.frameFilters;
 		this.miDebugger.printCalls = !!args.printCalls;
 		this.miDebugger.debugOutput = !!args.showDevDebugOutput;
 		this.stopAtEntry = args.stopAtEntry;
+		this.miDebugger.registerLimit = args.registerLimit ?? "";
 		if (args.ssh !== undefined) {
 			if (args.ssh.forwardX11 === undefined)
 				args.ssh.forwardX11 = true;
