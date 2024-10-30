@@ -215,6 +215,7 @@ export class BreakpointGroups {
 							line: brk.line,
 							condition: brk.condition,
 							countCondition: brk.hitCondition,
+							logMessage: brk.logMessage
 						});
 					});
 				},
@@ -708,7 +709,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 
 			//反之，如果这些断点所属的断点组中有一个就是当前断点组，那么就通知GDB立即设置断点
 			const all = args.breakpoints.map(brk => {
-				return this.miDebugger.addBreakPoint({ file: path, line: brk.line, condition: brk.condition, countCondition: brk.hitCondition });
+				return this.miDebugger.addBreakPoint({ file: path, line: brk.line, condition: brk.condition, countCondition: brk.hitCondition, logMessage: brk.logMessage });
 			});
 			//令GDB设置断点
 			Promise.all(all).then(brkpoints => {
@@ -786,7 +787,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 
 				ret.push(new StackFrame(
 					this.threadAndLevelToFrameId(args.threadId, element.level),
-					element.function + "@" + element.address,
+					element.function + (element.address ? "@" + element.address : ""),
 					source,
 					element.line,
 					0));
@@ -983,7 +984,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 								variables.push({
 									name: variable.name,
 									type: variable.type,
-									value: "<unknown>",
+									value: variable.type,
 									variablesReference: createVariable(variable.name)
 								});
 						}
@@ -1003,7 +1004,14 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 				// TODO: this evaluates on an (effectively) unknown thread for multithreaded programs.
 				variable = await this.miDebugger.evalExpression(JSON.stringify(id), 0, 0);
 				try {
-					let expanded = expandValue(createVariable, variable.result("value"), id, variable);
+					let variableValue = variable.result("value");
+					const pattern = /'([^']*)' <repeats (\d+) times>/g;
+					variableValue = variableValue.replace(pattern, (_: any, char: string, count: string) => {
+						const repeatCount = parseInt(count, 10) + 1;
+						const repeatedArray = Array(repeatCount).fill(char);
+						return `{${repeatedArray.map(item => `'${item}'`).join(', ')}}`;
+					});
+					let expanded = expandValue(createVariable, variableValue, id, variable);
 					if (!expanded) {
 						this.sendErrorResponse(response, 2, `Could not expand variable`);
 					} else {
@@ -1183,7 +1191,12 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 					this.sendResponse(response);
 				},
 				(msg) => {
-					this.sendErrorResponse(response, 7, msg.toString());
+					if (args.context == "hover") {
+						// suppress error for hover as the user may just play with the mouse
+						this.sendResponse(response);
+					} else {
+						this.sendErrorResponse(response, 7, msg.toString());
+					}
 				}
 			);
 		} else {
