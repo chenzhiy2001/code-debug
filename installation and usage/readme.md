@@ -23,7 +23,7 @@ git clone --recursive https://github.com/chenzhiy2001/rcore-ebpf
 注：rcore-ebpf 为修改版的 rCore-Tutorial-v3
 #### 配置环境
 
-1. 将**安装与使用**文件夹中的test.sh换到在home目录下运行
+1. 将**安装与使用**文件夹中的test.sh换到在`/home/你的用户名`目录下运行
 2. 执行chmod +x test.sh命令，为文件添加权限
 3. 执行./test.sh，开始执行，请保证网络畅通，可能要很长时间(期间若遇到某个部分无法安装的问题，采用手动安装再继续）
 4. 执行完毕后配置环境变量：
@@ -138,7 +138,7 @@ export PATH=$PATH:/home/path/to/riscv64-linux-musl-cross/bin
    npm --version
    ```
 
-1. 获取risc-v工具链 在[sifive官网](https://www.sifive.com/software)下载risc-v工具链或者试试直接访问[这里](https://static.dev.sifive.com/dev-tools/riscv64-unknown-elf-gcc-8.3.0-2020.04.1-x86_64-linux-ubuntu14.tar.gz)。下载后将该文件复制到home目录下并解压，将其中的bin/文件夹加入环境变量.
+1. 获取risc-v工具链 在[sifive官网](https://www.sifive.com/software)下载risc-v工具链或者试试直接访问[这里](https://static.dev.sifive.com/dev-tools/riscv64-unknown-elf-gcc-8.3.0-2020.04.1-x86_64-linux-ubuntu14.tar.gz)。下载后将该文件复制到`/home/你的用户名`目录下并解压，将其中的bin/文件夹加入环境变量.
 
     > Sifive官网提供的工具链没有python支持，因此，如果想用ebpf side-stub，我们要自己编译一份工具链：(更多信息见<https://github.com/riscv-collab/riscv-gnu-toolchain/issues/925>)
     > 
@@ -180,10 +180,10 @@ export PATH=$PATH:/home/path/to/riscv64-linux-musl-cross/bin
 
 
 
-1. 下载rcore-ebpf，需要修改rcore-ebpf的源码和编译参数，下载[这个仓库](https://github.com/chenzhiy2001/rCore-Tutorial-v3)修改过的rCore-Tutorial-v3，建议下载到home目录，下载之后跑一遍rcore-ebpf。
+1. 下载rcore-ebpf，需要修改rcore-ebpf的源码和编译参数，下载[这个仓库](https://github.com/chenzhiy2001/rCore-Tutorial-v3)修改过的rCore-Tutorial-v3，建议下载到`/home/你的用户名`，下载之后跑一遍rcore-ebpf。
 
 
-1. clone 本仓库(code-debug)，建议clone到home目录
+1. clone 本仓库(code-debug)，建议clone到`/home/你的用户名`
 
 #### 待调试OS的配置
 
