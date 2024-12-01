@@ -169,7 +169,7 @@ if git clone https://github.com/riscv/riscv-gnu-toolchain; then
     cd riscv-gnu-toolchain
     ./configure --prefix=/opt/riscv
     echo -e "${YELLOW}编译risc-v工具链,可能时间较长....${RESET}" | tee -a output1.txt
-    if sudo make; then
+    if sudo make -j$(nproc); then
         echo -e "${YELLOW}编译完成....${RESET}" | tee -a output1.txt
     else
         echo -e "${YELLOW}编译失败..${RESET}" | tee -a output1.txt
