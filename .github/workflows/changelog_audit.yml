@@ -1,14 +1,14 @@
 name: Changelog Audit
 defaults:
   run:
-    working-directory: code-debug
+    working-directory: code-debug # Not working
 on:
   push:
     paths:
-      - ./CHANGELOG.md
+      - ./code-debug/CHANGELOG.md
   pull_request:
     paths:
-      - ./CHANGELOG.md
+      - ./code-debug/CHANGELOG.md
 jobs:
   # Linting, stylechecking and spellchecking are covered by the general document
   # linting job, so this only checks that the changelog is conformant with the
@@ -23,4 +23,4 @@ jobs:
       uses: mindsers/changelog-reader-action@v2
       with:
         validation_level: error
-        path: ./CHANGELOG.md
+        path: ./code-debug/CHANGELOG.md

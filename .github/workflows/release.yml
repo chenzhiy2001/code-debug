@@ -40,9 +40,10 @@ jobs:
     - name: Package Extension into .vsix file
       id: asset
       shell: bash
+      working-directory: code-debug/code-debug
       run: >
         npx vsce package;
-        echo ::set-output name=vsix_path::$(ls *.vsix)
+        echo "vsix_path=$(ls *.vsix)" >> $GITHUB_ENV
 
     - name: Upload .vsix file to Github as release asset
       uses: actions/upload-release-asset@v1
@@ -50,8 +51,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ${{ steps.asset.outputs.vsix_path }}
-        asset_name: ${{ steps.asset.outputs.vsix_path }}
+        asset_path: code-debug/code-debug/${{ env.vsix_path }}
+        asset_name: ${{ env.vsix_path }}
         asset_content_type: application/zip
 
     #
