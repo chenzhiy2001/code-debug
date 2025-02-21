@@ -1,7 +1,7 @@
 {
 	"name": "os-debug",
 	"displayName": "OS Debugger",
-	"homepage":"https://github.com/chenzhiy2001/code-debug/blob/master/README-ExtensionMarkets.md",
+	"homepage":"https://github.com/chenzhiy2001/code-debug/blob/master/code-debug/README-ExtensionMarkets.md",
 	"description": "code-debug Operating System Debugger",
 	"keywords": [
 		"gdb",
@@ -9,7 +9,7 @@
 		"debug"
 	],
 	"license": "public domain",
-	"version": "2.0.0",
+	"version": "2.0.1",
 	"publisher": "chenzhiy2001",
 	"icon": "images/icon.png",
 	"engines": {
