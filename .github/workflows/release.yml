@@ -40,7 +40,7 @@ jobs:
     - name: Package Extension into .vsix file
       id: asset
       shell: bash
-      working-directory: code-debug/code-debug
+      working-directory: code-debug  # Fixed: only one level down
       run: >
         npx vsce package;
         echo "vsix_path=$(ls *.vsix)" >> $GITHUB_ENV
@@ -51,7 +51,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ github.event.release.upload_url }}
-        asset_path: code-debug/code-debug/${{ env.vsix_path }}
+        asset_path: code-debug/${{ env.vsix_path }}  # Fixed: removed extra directory
         asset_name: ${{ env.vsix_path }}
         asset_content_type: application/zip
 
@@ -59,11 +59,12 @@ jobs:
     # Publish Extension
     #
     - name: Publish to VSCode Extension Marketplace
-      env:
-        VSCE_PAT: ${{ secrets.VS_MARKETPLACE_TOKEN }}
-      run: npx vsce publish --packagePath ${{ steps.asset.outputs.vsix_path }}
-
+    env:
+      VSCE_PAT: ${{ secrets.VS_MARKETPLACE_TOKEN }}
+    run: npx vsce publish --packagePath code-debug/${{ env.vsix_path }}
+  
     - name: Publish to Open VSX Registry
       env:
         OVSX_PAT: ${{ secrets.OPEN_VSX_TOKEN }}
-      run: npx ovsx publish ${{ steps.asset.outputs.vsix_path }}
+      run: npx ovsx publish code-debug/${{ env.vsix_path }}
+  
