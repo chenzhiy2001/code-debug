@@ -59,9 +59,9 @@ jobs:
     # Publish Extension
     #
     - name: Publish to VSCode Extension Marketplace
-    env:
-      VSCE_PAT: ${{ secrets.VS_MARKETPLACE_TOKEN }}
-    run: npx vsce publish --packagePath code-debug/${{ env.vsix_path }}
+      env:
+        VSCE_PAT: ${{ secrets.VS_MARKETPLACE_TOKEN }}
+      run: npx vsce publish --packagePath code-debug/${{ env.vsix_path }}
   
     - name: Publish to Open VSX Registry
       env:
