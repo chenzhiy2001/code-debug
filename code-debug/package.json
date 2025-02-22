@@ -565,12 +565,12 @@
 							},
 							"kernel_memory_ranges":{
 								"type":"array",
-								"description":"ranges of kernel address",
+								"description": "ranges of kernel address, left-closed right-open intervals",
 								"default":[["0xefffffffffffffff","0xffffffffffffffff"]]
 							},
 							"user_memory_ranges":{
 								"type":"array",
-								"description":"ranges of user address",
+								"description":"ranges of user address, left-closed right-open intervals",
 								"default":[["0x0000000000000000","0xe000000000000000"]]
 							},
 							"border_breakpoints":{
