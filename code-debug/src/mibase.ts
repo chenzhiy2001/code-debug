@@ -166,7 +166,7 @@ export class BreakpointGroups {
 	//功能和disableCurrentBreakpointGroupBreakpoints有重合。
 	//断点被触发时会调用该函数。如果空间发生变化（如kernel=>'src/bin/initproc.rs'）
 	//缓存旧空间的断点，令GDB清除旧断点组的断点，卸载旧断点组的符号表文件，加载新断点组的符号表文件，加载新断点组的断点
-	public updateCurrentBreakpointGroup(updateTo: string) {
+	public updateCurrentBreakpointGroup(updateTo: string, continueAfterUpdate: boolean = false) {
 		let newIndex = -1;
 		for (let i = 0; i < this.groups.length; i++) {
 			if (this.groups[i].name === updateTo) {
@@ -201,8 +201,8 @@ export class BreakpointGroups {
 			this.debugSession.miDebugger.addSymbolFile(f);
 		}
 
-		this.groups[newIndex].setBreakpointsArguments.forEach((args) => {
-			this.debugSession.miDebugger.clearBreakPoints(args.source.path).then(
+		const breakpointPromises = this.groups[newIndex].setBreakpointsArguments.map((args) => {
+			return this.debugSession.miDebugger.clearBreakPoints(args.source.path).then(
 				() => {
 					let path = args.source.path;
 					if (this.debugSession.isSSH) {
@@ -218,12 +218,20 @@ export class BreakpointGroups {
 							logMessage: brk.logMessage
 						});
 					});
+					return Promise.all(all);
 				},
 				(msg) => {
 					//TODO
 				}
 			);
 		});
+
+		Promise.all(breakpointPromises).then(() => {
+			if (continueAfterUpdate) {
+				this.debugSession.miDebugger.continue();
+			}
+		});
+		
 		this.currentBreakpointGroupName = this.groups[newIndex].name;
 		this.debugSession.showInformationMessage("breakpoint group changed to " + updateTo);
 	}
@@ -1370,7 +1378,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 	}
 
 	public async getStringVariable(name:string):Promise<string>{
-		const node = await this.miDebugger.sendCliCommand('x /s ' + name );
+		const node = await this.miDebugger.sendCliCommand('print ' + name ); // x /s may work
 		const resultstring = this.miDebugger.getOriginallyNoTokenMINodes(node.token)[0].outOfBandRecord[0].content;
 		this.showInformationMessage("`getStringVariable` got string: " + resultstring);
 		return /"(.*?)"/.exec(resultstring)[1];// we want things INSIDE double quotes so it's [1], the first captured group.
@@ -1490,13 +1498,13 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 		}
 		else if(action.type === DebuggerActions.high_level_switch_breakpoint_group_to_low_level){//for example, user to kernel
 			const high_level_breakpoint_group_name = this.breakpointGroups.getCurrentBreakpointGroupName();
-			this.breakpointGroups.updateCurrentBreakpointGroup(this.breakpointGroups.getNextBreakpointGroup());
+			this.breakpointGroups.updateCurrentBreakpointGroup(this.breakpointGroups.getNextBreakpointGroup(),true);
 			this.breakpointGroups.setNextBreakpointGroup(high_level_breakpoint_group_name);// if a hook is triggered during low level execution, NextBreakpointGroup will be set to the return value of hook behavior function.
 		}
 		else if(action.type === DebuggerActions.low_level_switch_breakpoint_group_to_high_level){//for example, kernel to user
 			const low_level_breakpoint_group_name = this.breakpointGroups.getCurrentBreakpointGroupName();
 			const high_level_breakpoint_group_name = this.breakpointGroups.getNextBreakpointGroup();
-			this.breakpointGroups.updateCurrentBreakpointGroup(high_level_breakpoint_group_name);
+			this.breakpointGroups.updateCurrentBreakpointGroup(high_level_breakpoint_group_name,true);
 			this.breakpointGroups.setNextBreakpointGroup(low_level_breakpoint_group_name);
 		}
 
