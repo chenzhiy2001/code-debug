@@ -42,7 +42,7 @@ jobs:
       shell: bash
       run: >
         npx vsce package;
-        echo "vsix_path=$(find . -type f -name '*.vsix')" >> $GITHUB_ENV
+        echo "vsix_path=$(ls *.vsix)" >> $GITHUB_ENV
 
     - name: Upload .vsix file to Github as release asset
       uses: actions/upload-release-asset@v1
@@ -50,7 +50,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ${{ env.vsix_path }}
+        asset_path: code-debug/${{ env.vsix_path }}
         asset_name: ${{ env.vsix_path }}
         asset_content_type: application/zip
 
