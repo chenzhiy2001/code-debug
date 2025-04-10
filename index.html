@@ -7,21 +7,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
   <title>code-debug 项目</title>
   
-  <!-- Docsify Theme CSS -->
   <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
-  
-  <!-- Custom Styles -->
   <style>
     figure {
         text-align: center;
     }
     .myImageClass {
-        width: 100vw; /* 宽度设为视窗宽度的100% */
-        height: auto; /* 高度等比例自适应 */
+        width: 100vw; 
+        height: auto;
     }
     @media (min-width: 768px) {
         .myImageClass {
-            width: 40vw; /* 宽度设为视窗宽度的40% */
+            width: 40vw; 
         }
     }
   </style>
@@ -32,23 +29,21 @@
   <script>
     window.$docsify = {
       name: 'code-debug 项目',
-      repo: 'https://github.com/chenzhiy2001/code-debug', // 仓库链接
+      repo: 'https://github.com/chenzhiy2001/code-debug',
       loadSidebar: true,
-      sidebar: './_sidebar.md',  // 侧边栏 Markdown 文件路径
-      homepage: 'README.md',
+      sidebar: './_sidebar.md',  //侧边栏Markdown件路径
+      homepage: '说明文档.md',
       search: 'auto',
-      // 配置侧边栏导航（同时使用 nav 配置）
+      //配置侧边栏导航（同时使用nav配置）
       nav: [
-        { name: '项目介绍', path: 'README.md' },
+        { name: '项目介绍', path: '说明文档.md' },
         { name: '记录文档', path: './docs/readme.md' },
         { name: '安装和使用方法', path: './installation%20and%20usage/readme.md' },
       ],
       markdown: {
         renderer: {
           image: function(href, title, text) {
-            // 原始图片渲染
             var image_html = this.origin.image.apply(this, arguments);
-            // 用 figure 包裹图片并居中，同时添加说明文字
             return '<figure>' + image_html + '<figcaption>' + text + '</figcaption></figure>';
           }
         }
@@ -74,29 +69,29 @@
     }
   </script>
 
-  <!-- Docsify 核心脚本 -->
+  <!-- Docsify核心脚本 -->
   <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
   <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
   
-  <!-- Prism.js 代码高亮插件 -->
+  <!-- Prism.js代码高亮插件 -->
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-c.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-rust.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-bash.min.js"></script>
   
-  <!-- Katex 支持数学公式 -->
+  <!-- Katex支持数学公式 -->
   <script src="//cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.js"></script>
   <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.css" />
   
-  <!-- Marked.js 渲染 Markdown -->
+  <!-- Marked.js渲染 Markdown -->
   <script src="//cdn.jsdelivr.net/npm/marked@4"></script>
   
-  <!-- docsify-hide-code 插件 -->
+  <!-- docsify-hide-code插件 -->
   <script src="https://cdn.jsdelivr.net/npm/docsify-hide-code/dist/docsify-hide-code.min.js"></script>
   
-  <!-- docsify-count 插件 -->
+  <!-- docsify-count插件 -->
   <script src="https://cdn.jsdelivr.net/npm/docsify-count@latest/dist/countable.min.js"></script>
   
-  <!-- docsify-katex 插件 -->
+  <!-- docsify-katex插件 -->
   <script src="//cdn.jsdelivr.net/npm/docsify-katex@latest/dist/docsify-katex.js"></script>
 </body>
 </html>
