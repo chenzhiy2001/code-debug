@@ -140,9 +140,8 @@ qemu-system-riscv64 "$@" | tee ./code_debug_qemu_output_history.txt
 
  NOTE：此处是[演示视频](https://gitlab.eduxiji.net/T202410011992734/project2210132-235708/-/blob/master/installation%20and%20usage/%E6%BC%94%E7%A4%BA%E8%A7%86%E9%A2%91.mp4)（该视频是使用仓库代码启动的调试器，如果使用vs code code-debug 插件，即可直接按照上面的方法启动调试）
 
-###### 补充
 
-（可选）如果你要用rust-gdb，先保证你的GDB有Python支持（前文有介绍怎么添加Python支持）然后在rCore-Tutorial-v3的根目录下添加一个脚本：
+6. （可选）如果你要用rust-gdb，先保证你的GDB有Python支持（前文有介绍怎么添加Python支持）然后在rCore-Tutorial-v3的根目录下添加一个脚本：
 
 ```shell
 export RUST_GDB=riscv64-unknown-elf-gdb
