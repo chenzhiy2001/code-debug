@@ -158,6 +158,7 @@ rust-gdb "$@"
 克隆仓库
 ```plain
 git clone https://github.com/chenzhiy2001/code-debug
+```
 
 #### 配置环境
 
@@ -174,16 +175,17 @@ export PATH=$PATH:/opt/riscv/bin
 source ~/.bashrc
 ```
 5. 使用命令检查是否安装成功：
-    1. rustc --version   (rustc 1.74.0-nightly (59a829484 2023-08-30))
-    2. npm -v  (版本在9以上)
-    3. node -v (版本在18以上)
-    4. qemu-system-riscv64 --version  （QEMU emulator version 7.0.0）
-    5. /opt/riscv/bin/riscv64-unknown-elf-gdb  （出现（gdb命令行，输入以下命令，有输出的话，表示有python支持））
 ```plain
+1. rustc --version   (rustc 1.74.0-nightly (59a829484 2023-08-30))
+2. npm -v  (版本在9以上)
+3. node -v (版本在18以上)
+4. qemu-system-riscv64 --version  （QEMU emulator version 7.0.0）
+5. /opt/riscv/bin/riscv64-unknown-elf-gdb  （出现gdb命令行，输入以下命令，有输出的话，表示有python支持）
 (gdb) python
 print("114514")
 end 
 ```
+
 6. 如果还有问题请查看test.sh文件，里面用回车符隔开了下载各个工具的命令，可以把它单独复制出来到新的文件重新运行
 
    
