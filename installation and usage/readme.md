@@ -4,7 +4,7 @@
 
 以下操作在ubuntu环境中进行，推荐使用ubuntu20.04虚拟机，其他版本请确保使用较新的`npm`和`node`。
 
-1. 下载vs code [code-debug 调试插件最新安装包](https://github.com/chenzhiy2001/code-debug/releases/download/os-debug-2025-02-27/os-debug-2.0.1.vsix)
+1. 下载vs code [code-debug 调试插件最新安装包](https://github.com/chenzhiy2001/code-debug/releases)
 
 2. 然后启动 vs code，在扩展视图（Extensions View）中，点击右上角的 **“...”** 菜单，选择 **“从 VSIX 安装...” (Install from VSIX...)**，然后选择第一步下载的 `.vsix` 安装包即可
 
