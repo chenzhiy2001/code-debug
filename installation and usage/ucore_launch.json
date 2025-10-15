@@ -1,0 +1,95 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "Debug uCore (Kernel + User)",
+            "autorun": ["add-symbol-file ${workspaceFolder}/labcodes/${input:labNum}/bin/kernel"],
+            
+            "target": ":1234",
+            "remote": true,
+            "cwd": "${workspaceFolder}/labcodes/${input:labNum}",
+            "valuesFormatting": "parseText",
+            "gdbpath": "gdb",
+            "showDevDebugOutput": true,
+            "internalConsoleOptions": "openOnSessionStart",
+            "printCalls": true,
+            "stopAtConnect": true,
+            "qemuPath": "qemu-system-i386",
+            
+            "qemuArgs": [
+                "-hda",
+                "${workspaceFolder}/labcodes/${input:labNum}/bin/ucore.img",
+                // [可选] 第二硬盘，用于文件系统，在lab8中需要取消注释
+                // "-hdb",
+                // "${workspaceFolder}/labcodes/${input:labNum}/bin/sfs.img",
+                
+                "-serial", "mon:stdio",
+                "-nographic",
+                "-s",
+                "-S"
+            ],
+
+            "program_counter_id": 8,
+            "kernel_memory_ranges":[["0xC0000000","0xFFFFFFFF"]],
+            "user_memory_ranges":[["0x00000000","0xBFFFFFFF"]],
+
+            "border_breakpoints":[
+                {
+                    "filepath": "${workspaceFolder}/labcodes/${input:labNum}/kern/trap/trapentry.S",
+                    "line": 105
+                },
+                {
+                    "filepath": "${workspaceFolder}/labcodes/${input:labNum}/kern/trap/trap.c",
+                    "line": 80
+                }
+            ],
+            
+            "hook_breakpoints":[
+                {
+                    "breakpoint": {
+                        "file": "${workspaceFolder}/labcodes/${input:labNum}/kern/syscall/syscall.c",
+                        "line": 839
+                    },
+                    "behavior": {
+                        "isAsync": true,
+                        "functionArguments": "",
+                        "functionBody": "let p = await this.getStringVariable('name'); return '${workspaceFolder}/labcodes/${input:labNum}/bin/' + p;"
+                    }
+                }
+            ],
+
+            "filePathToBreakpointGroupNames": {
+                "isAsync": false,
+                "functionArguments": "filePathStr",
+                "functionBody": "if (filePathStr.includes('/kern/')) { return ['kernel']; } else if (filePathStr.includes('/user/')) { return [filePathStr]; } else if (filePathStr.includes('/libs/')) { return ['kernel']; } else { return []; }"
+            },
+            
+            "breakpointGroupNameToDebugFilePaths":{
+                "isAsync": false,
+                "functionArguments": "groupName",
+                "functionBody": "if (groupName === 'kernel') { return ['${workspaceFolder}/labcodes/${input:labNum}/bin/kernel']; } else { let pathParts = groupName.split('/'); let fileName = pathParts[pathParts.length - 1]; if (fileName) { let baseName = fileName.split('.')[0]; return ['${workspaceFolder}/labcodes/${input:labNum}/bin/' + baseName]; } return []; }"
+            }
+        }
+    ],
+
+    "inputs": [
+        {
+            "id": "labNum",
+            "type": "pickString",
+            "description": "请选择您要调试的 uCore 实验编号",
+            "options": [
+                "lab1",
+                "lab2",
+                "lab3",
+                "lab4",
+                "lab5",
+                "lab6",
+                "lab7",
+                "lab8"
+            ],
+            "default": "lab1"
+        }
+    ]
+}
