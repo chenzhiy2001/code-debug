@@ -150,7 +150,7 @@ rust-gdb "$@"
 
 将这个脚本命名为`riscv64-unknown-elf-gdb-rust.sh`，添加可执行权限，然后将刚才launch.json中的`"gdbpath": "riscv64-unknown-elf-gdb"`改为`"gdbpath": "${workspaceRoot}/riscv64-unknown-elf-gdb-rust.sh"`
 
-
+**NOTE: 我们还提供了 [uCore](https://github.com/kiukotsu/ucore)、[xv6](https://github.com/michaelengel/xv6-vf2) 的调试配置文件，均在[该目录](https://github.com/chenzhiy2001/code-debug/tree/master/installation%20and%20usage)下，使用方法与 rCore 一致，保证被调试系统能够正常运行，然后添加对应的vs code配置文件，再进行第5步 启动调试，即可。值得提示的是，uCore的调试单位为一个lab，在启动调试后，vs code会提醒您选择需要调试的lab，如果您要调试lab8，需要根据配置文件中的注释，对配置文件进行稍微的调整。**
 
 ### 补充：三、自动配置环境方法
 为了便于用户，我们还提供了从零开始的环境配置脚本。
