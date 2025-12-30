@@ -125,7 +125,7 @@
 	git clone https://github.com/rcore-os/rCore-Tutorial-v3.git
 	```
 
-2. 请确保 rCore-Tutorial-v3 能在你的ubuntu本地运行起来，运行方法参考 rCore 仓库Readme文件
+2. 请根据该[commit](https://github.com/chenzhiy2001/rCore-Tutorial-v3/commit/c64ae25ecee708c0257c9acb9da92309d32e1059)为你本地克隆的rCore打好调试补丁，确保 rCore-Tutorial-v3 能在你的ubuntu本地运行起来，运行方法参考 rCore 仓库Readme文件
 3. 打开vs code，并打开被调试的 rCore-Tutorial-v3 文件夹，在 .vscode 文件夹中创建 launch.json 文件，并添加[该文件](https://github.com/chenzhiy2001/code-debug/blob/c102c48714221e5a38d28a54289080fff7ca0892/installation%20and%20usage/ebpf_launch.json)中内容
 4. 为了用eBPF Panel，需要在 rCore-Tutorial-v3 的根目录下添加一个脚本 qemu-system-riscv64-with-logs.sh ，内容如下：
 
