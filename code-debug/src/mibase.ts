@@ -5,7 +5,7 @@ import { Breakpoint, IBackend, Variable, VariableObject, ValuesFormattingMode, M
 import { MINode } from './backend/mi_parse';
 import { expandValue, isExpandable } from './backend/gdb_expansion';
 import { MI2 } from './backend/mi2/mi2';
-import { execSync } from 'child_process';
+import { exec, execSync } from 'child_process';
 import * as systemPath from "path";
 import * as net from "net";
 import * as os from "os";
@@ -1378,7 +1378,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 	}
 
 	public async getStringVariable(name:string):Promise<string>{
-		const node = await this.miDebugger.sendCliCommand('print ' + name ); // x /s may work
+		const node = await this.miDebugger.sendCliCommand('x /s ' + name ); // x /s may work
 		const resultstring = this.miDebugger.getOriginallyNoTokenMINodes(node.token)[0].outOfBandRecord[0].content;
 		this.showInformationMessage("`getStringVariable` got string: " + resultstring);
 		return /"(.*?)"/.exec(resultstring)[1];// we want things INSIDE double quotes so it's [1], the first captured group.
@@ -1396,6 +1396,11 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 		if(action.type === DebuggerActions.check_if_kernel_yet){
 			this.showInformationMessage('doing action: check_if_kernel_yet');
 			this.miDebugger.getSomeRegisters([this.program_counter_id]).then(v => {
+				// 检查是否拿到了寄存器数据
+				if(!v || v.length === 0 || !v[0]){
+					console.warn("【Code-Debug】当前无法获取 PC 寄存器 (check_if_kernel_yet)，跳过状态检查。");
+					return;
+				}
 				const addr = parseInt(v[0].valueStr, 16);
 				if(this.isKernelAddr(addr)){
 					this.showInformationMessage('arrived at kernel. current addr:' + addr.toString(16));
@@ -1408,6 +1413,10 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 		else if(action.type === DebuggerActions.check_if_user_yet){
 			this.showInformationMessage('doing action: check_if_user_yet');
 			this.miDebugger.getSomeRegisters([this.program_counter_id]).then(v => {
+				if (!v || v.length === 0 || !v[0]) {
+					console.warn("【Code-Debug】当前无法获取 PC 寄存器 (check_if_user_yet)，跳过状态检查。");
+					return;
+				}
 				const addr = parseInt(v[0].valueStr, 16);
 				if(this.isUserAddr(addr)){
 					this.showInformationMessage('arrived at user. current addr:' + addr.toString(16));
@@ -1427,6 +1436,11 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 			//const kernelToUserBorderLine = this.breakpointGroups.getCurrentBreakpointGroup().border?.line;
 			//todo if you are trying to do multi-core debugging, you might need to modify the 3rd argument.
 			this.miDebugger.getStack(0, 1, this.recentStopThreadID).then(v=>{
+				// 预防性检查：Stack 也可能为空，防止 v[0].file 崩溃
+				if (!v || v.length === 0 || !v[0]) {
+					console.warn("【Code-Debug】无法获取堆栈信息，跳过边界检查。");
+					return;
+				}
 				filepath = v[0].file;
 				lineNumber = v[0].line;
 
@@ -1451,6 +1465,11 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 			//const userToKernelBorderLine = this.breakpointGroups.getCurrentBreakpointGroup().border?.line;
 			//todo if you are trying to do multi-core debugging, you might need to modify the 3rd argument.
 			this.miDebugger.getStack(0, 1, this.recentStopThreadID).then(v=>{
+				// 预防性检查：Stack 也可能为空，防止 v[0].file 崩溃
+				if (!v || v.length === 0 || !v[0]) {
+					console.warn("【Code-Debug】无法获取堆栈信息，跳过边界检查。");
+					return;
+				}
 				filepath = v[0].file;
 				lineNumber = v[0].line;
 
@@ -1477,6 +1496,11 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 			let lineNumber:number = -1;
 			//todo if you are trying to do multi-core debugging, you might need to modify the 3rd argument.
 			this.miDebugger.getStack(0, 1, this.recentStopThreadID).then(v=>{
+				// 预防性检查：Stack 也可能为空，防止 v[0].file 崩溃
+				if (!v || v.length === 0 || !v[0]) {
+					console.warn("【Code-Debug】无法获取堆栈信息，跳过边界检查。");
+					return;
+				}
 				filepath = v[0].file;
 				lineNumber = v[0].line;
 				//if `behavior()` has not been executed, `this.breakpointGroups.nextBreakpointGroup` stays the same.

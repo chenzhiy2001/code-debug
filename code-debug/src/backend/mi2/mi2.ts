@@ -104,6 +104,7 @@ export class MI2 extends EventEmitter implements IBackend {
 			{
 				info.push(this.originallyNoTokenMINodes[i]);
 				// console.log("getMIinfo:"+i+" "+this.miarray);
+				this.originallyNoTokenMINodes.splice(i, 1);
 				delete this.originallyNoTokenMINodes[i]; //This will NOT cause bugs because `i` is going from high to low.
 			}
 		}
@@ -404,6 +405,13 @@ export class MI2 extends EventEmitter implements IBackend {
 				let handled = false;
 				if(parsed.token !== undefined){
 					if (this.handlers[parsed.token]) {
+						if(parsed.resultRecords && parsed.resultRecords.resultClass == "error"){
+							const msg = parsed.result("msg");
+							if(msg && msg.toLowerCase().indexOf("thread is running") !== -1){
+								console.log("【Code-Debug】已拦截并忽略线程运行错误：" + msg);
+								parsed.resultRecords.resultClass = 'done';
+							}
+						}
 						this.handlers[parsed.token](parsed);
 						delete this.handlers[parsed.token];
 						handled = true;
@@ -1048,8 +1056,13 @@ export class MI2 extends EventEmitter implements IBackend {
 		}
 		const result = await this.sendCommand(mi_string);
 		const nodes = result.result('register-values');
+		// 如果获取不到数据（可能是被我们拦截了错误，或者是 GDB 没给）
 		if (!Array.isArray(nodes)) {
-			throw new Error('Failed to retrieve some register values.');
+			// 打印一个警告，方便以后排查问题，但绝不抛出 Error
+			// throw new Error('Failed to retrieve some register values.');
+			console.warn("【Code-Debug】警告：本次未获取到寄存器数据 (nodes is not array)。已返回空数组以防崩溃。");
+			// 返回一个空数组
+			return [];
 		}
 		const ret: RegisterValue[] = nodes.map(node => {
 			const index = parseInt(MINode.valueOf(node, "number"));

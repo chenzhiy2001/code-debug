@@ -92,6 +92,7 @@ class GDBDebugSession extends MI2DebugSession {
 	}
 
 	protected override launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments): void {
+
 		const dbgCommand = args.gdbpath || "gdb";
 		if (!this.checkCommand(dbgCommand)) {
 			this.sendErrorResponse(response, 104, `Configured debugger ${dbgCommand} not found.`);
