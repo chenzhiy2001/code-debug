@@ -43,7 +43,7 @@ rust-gdb "$@"
 
 将这个脚本命名为`riscv64-unknown-elf-gdb-rust.sh`，添加可执行权限，然后将刚才launch.json中的`"gdbpath": "riscv64-unknown-elf-gdb"`改为`"gdbpath": "${workspaceRoot}/riscv64-unknown-elf-gdb-rust.sh"`
 
-### 开发环境配置
+### 三、开发环境配置
 如果你想要开发我们的调试器，请确保以下依赖安装好：
 
 	```shell
